@@ -504,45 +504,89 @@ export const PulseCanvas: React.FC<PulseCanvasProps> = ({
         }
         ctx.shadowBlur = 0;
 
-        // ---- 6c. horizontal lens flare bar (full canvas width, fades to 0 at edges) ----
-        const flareWidth = logicalW; // exactly matches canvas → never clipped
-        const flareCoreH = 1.6 + 1.6 * pulseBeat;
-        const flareWideH = 140 + 60 * pulseBeat;
+        // ---- 6c. anamorphic lens flare ----
+        // Replaces the old flat "two rectangles" bar with a stack of
+        // horizontally-stretched ellipses + central core disc + offset
+        // ghost flares + a few sparkles. Layered with `lighter` blending
+        // already enabled above so the highlights add up the way real
+        // lens reflections do.
+        const flarePulse = 0.8 + 0.2 * pulseBeat;
 
-        // Wide soft cyan halo
-        const wideGrad = ctx.createLinearGradient(
-          -flareWidth / 2,
-          0,
-          flareWidth / 2,
-          0,
-        );
-        wideGrad.addColorStop(0, 'rgba(34, 211, 238, 0)');
-        wideGrad.addColorStop(0.3, 'rgba(34, 211, 238, 0.12)');
-        wideGrad.addColorStop(0.5, 'rgba(165, 243, 252, 0.45)');
-        wideGrad.addColorStop(0.7, 'rgba(34, 211, 238, 0.12)');
-        wideGrad.addColorStop(1, 'rgba(34, 211, 238, 0)');
-        ctx.fillStyle = wideGrad;
-        ctx.fillRect(-flareWidth / 2, -flareWideH / 2, flareWidth, flareWideH);
+        const drawFlareEllipse = (
+          rx: number,
+          ry: number,
+          stops: Array<[number, string]>,
+        ) => {
+          const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+          for (const [o, c] of stops) grad.addColorStop(o, c);
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+          ctx.fill();
+        };
 
-        // Thin bright core line
-        const coreFlareGrad = ctx.createLinearGradient(
-          -flareWidth / 2,
-          0,
-          flareWidth / 2,
-          0,
-        );
-        coreFlareGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-        coreFlareGrad.addColorStop(0.42, 'rgba(255, 255, 255, 0.85)');
-        coreFlareGrad.addColorStop(0.5, 'rgba(255, 255, 255, 1)');
-        coreFlareGrad.addColorStop(0.58, 'rgba(255, 255, 255, 0.85)');
-        coreFlareGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        ctx.fillStyle = coreFlareGrad;
-        ctx.fillRect(
-          -flareWidth / 2,
-          -flareCoreH / 2,
-          flareWidth,
-          flareCoreH,
-        );
+        // 1. Widest, softest ambient streak — taper from center
+        drawFlareEllipse(logicalW * 0.62 * flarePulse, 95 * flarePulse, [
+          [0, `rgba(165, 243, 252, ${0.42 * intensity})`],
+          [0.18, `rgba(125, 211, 252, ${0.22 * intensity})`],
+          [0.55, `rgba(34, 211, 238, ${0.07 * intensity})`],
+          [1, 'rgba(34, 211, 238, 0)'],
+        ]);
+
+        // 2. Mid streak — narrower, brighter
+        drawFlareEllipse(logicalW * 0.5 * flarePulse, 32 * flarePulse, [
+          [0, `rgba(255, 255, 255, ${0.85 * intensity})`],
+          [0.12, `rgba(224, 252, 255, ${0.7 * intensity})`],
+          [0.35, `rgba(125, 211, 252, ${0.3 * intensity})`],
+          [1, 'rgba(34, 211, 238, 0)'],
+        ]);
+
+        // 3. Sharp anamorphic core line — very thin, very bright
+        drawFlareEllipse(logicalW * 0.55 * flarePulse, 3 + 1.5 * pulseBeat, [
+          [0, 'rgba(255, 255, 255, 1)'],
+          [0.4, `rgba(255, 255, 255, ${0.85 * intensity})`],
+          [1, 'rgba(255, 255, 255, 0)'],
+        ]);
+
+        // 4. Ghost flares offset along the horizontal axis
+        const ghosts = [
+          { x: -logicalW * 0.36, r: 28, a: 0.35, c: '165, 243, 252' },
+          { x: -logicalW * 0.22, r: 14, a: 0.55, c: '255, 255, 255' },
+          { x: -logicalW * 0.08, r: 9,  a: 0.5,  c: '224, 252, 255' },
+          { x:  logicalW * 0.08, r: 9,  a: 0.5,  c: '224, 252, 255' },
+          { x:  logicalW * 0.22, r: 14, a: 0.55, c: '255, 255, 255' },
+          { x:  logicalW * 0.36, r: 28, a: 0.35, c: '165, 243, 252' },
+          { x:  logicalW * 0.5,  r: 18, a: 0.3,  c: '125, 211, 252' },
+          { x: -logicalW * 0.5,  r: 18, a: 0.3,  c: '125, 211, 252' },
+        ];
+        for (const g of ghosts) {
+          const r = g.r * (0.85 + 0.3 * pulseBeat);
+          const ghostGrad = ctx.createRadialGradient(g.x, 0, 0, g.x, 0, r);
+          ghostGrad.addColorStop(0, `rgba(${g.c}, ${(g.a * intensity).toFixed(2)})`);
+          ghostGrad.addColorStop(0.6, `rgba(${g.c}, ${(g.a * intensity * 0.3).toFixed(2)})`);
+          ghostGrad.addColorStop(1, `rgba(${g.c}, 0)`);
+          ctx.fillStyle = ghostGrad;
+          ctx.beginPath();
+          ctx.arc(g.x, 0, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 5. Tiny sparkle dots drifting near the bright core
+        for (let i = 0; i < 10; i++) {
+          const seed = i * 0.91;
+          const phase = t * 0.6 + seed;
+          const sx = Math.cos(phase) * (60 + 50 * Math.sin(t * 0.4 + seed));
+          const sy = Math.sin(phase * 1.3 + seed) * 14;
+          const sa = (0.5 + 0.5 * Math.sin(phase * 2.1)) * 0.7;
+          const sr = 1.6 + Math.sin(phase * 1.7) * 0.8;
+          const sparkleGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr * 4);
+          sparkleGrad.addColorStop(0, `rgba(255, 255, 255, ${sa})`);
+          sparkleGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = sparkleGrad;
+          ctx.beginPath();
+          ctx.arc(sx, sy, sr * 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
 
         // ---- 6d. bright core with multi-stop radial gradient ----
         const coreR = 170 * (0.92 + 0.18 * pulseBeat);
