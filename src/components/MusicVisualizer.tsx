@@ -18,8 +18,14 @@ interface MusicVisualizerProps {
   opacity?: number;
   /** CSS blend mode */
   blendMode?: CSSProperties['mixBlendMode'];
-  /** Optional fixed preset name; if omitted a random curated preset is used */
+  /** Optional fixed preset name; if omitted a random preset is picked. */
   presetName?: string;
+  /**
+   * Optional whitelist of butterchurn preset names to choose from. When
+   * provided the random pick is constrained to entries that resolve in
+   * butterchurn-presets. Entries that don't resolve are logged.
+   */
+  presetWhitelist?: readonly string[];
   /** Extra className merged onto the canvas (for positioning) */
   className?: string;
   /** Explicit z-index */
@@ -31,6 +37,7 @@ export const MusicVisualizer = memo(function MusicVisualizer({
   opacity = 0.45,
   blendMode = 'screen',
   presetName,
+  presetWhitelist,
   className = 'absolute inset-0 w-full h-full pointer-events-none',
   zIndex = 0,
 }: MusicVisualizerProps) {
@@ -111,13 +118,29 @@ export const MusicVisualizer = memo(function MusicVisualizer({
           /* custom preset optional */
         }
 
-        // Curated preset pool — picks atmospheric/flowing ones that pair with
-        // a dark cosmic game backdrop.
         const presetNames = Object.keys(presets).sort();
-        let pool = presetNames.filter(n =>
-          /Geiss|flexi|martin|Aderrasi|Rovastar|shifter|Zylot|cosmic|fractal/i.test(n)
-        );
-        if (pool.length === 0) pool = presetNames;
+
+        // Preset selection pool.
+        // 1. If an explicit whitelist is provided, constrain to entries that
+        //    resolve in butterchurn-presets. Warn about any that don't.
+        // 2. Otherwise fall back to a regex-based curation of atmospheric
+        //    presets that pair with a dark cosmic backdrop.
+        let pool: string[];
+        if (presetWhitelist && presetWhitelist.length > 0) {
+          pool = presetWhitelist.filter(n => presets[n]);
+          const missing = presetWhitelist.filter(n => !presets[n]);
+          if (missing.length > 0) {
+            console.warn('[MusicViz] whitelist entries not found:', missing);
+          }
+        } else {
+          pool = presetNames.filter(n =>
+            /Geiss|flexi|martin|Aderrasi|Rovastar|shifter|Zylot|cosmic|fractal/i.test(n)
+          );
+        }
+        if (pool.length === 0) {
+          console.warn('[MusicViz] empty preset pool — falling back to full preset list');
+          pool = presetNames;
+        }
 
         const chosen = presetName && presets[presetName]
           ? presetName
