@@ -212,21 +212,21 @@ export default function PulseGame() {
         presetWhitelist={PRESET_WHITELIST}
       />
       
-      {/* Header */}
-      <div className="w-full max-w-6xl flex justify-between items-center z-10 gap-2">
-        <div className="flex flex-col">
+      {/* Header — 3-column grid keeps PULSE locked to true page-center */}
+      <div className="w-full max-w-6xl grid grid-cols-3 items-center z-10 gap-2">
+        <div className="flex flex-col justify-self-start">
           <div className="text-[8px] md:text-[10px] font-bold tracking-[0.2em] text-sky-400/60 uppercase">Bet</div>
           <div className="text-lg md:text-2xl font-display font-black text-white glow-blue">${betAmount.toFixed(2)}</div>
         </div>
 
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center justify-self-center">
           <div className="text-3xl md:text-5xl font-display font-black tracking-tighter text-white glow-blue italic">PULSE</div>
           <div className="ui-line w-24 md:w-48 mt-1" />
         </div>
 
-        <div className="flex flex-col items-end">
+        <div className="flex flex-col items-end justify-self-end">
           <div className="flex items-center gap-2 md:gap-4">
-            <button 
+            <button
               onClick={toggleMute}
               className="p-1.5 md:p-2 rounded-full bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all"
             >
@@ -415,21 +415,31 @@ export default function PulseGame() {
         FX {vizEnabled ? 'ON' : 'OFF'}
       </button>
 
-      {/* Result Overlay */}
+      {/* Result Overlay — SVG banner with SMIL animation, replays on state change */}
       <AnimatePresence>
         {(gameState === 'WON' || gameState === 'LOST' || gameState === 'COLLAPSED') && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px] pointer-events-none"
           >
-            <div className="flex flex-col items-center">
-              <div className={`text-4xl md:text-7xl font-display font-black italic mb-2 ${gameState === 'WON' ? 'text-green-500 glow-green' : 'text-red-500 glow-red'}`}>
-                {gameState === 'WON' ? 'WINNER!' : gameState === 'COLLAPSED' ? 'COLLAPSED' : 'BUSTED'}
-              </div>
+            <div className="flex flex-col items-center gap-2 md:gap-4">
+              <img
+                key={gameState}
+                src={
+                  gameState === 'WON'
+                    ? '/results/winner.svg'
+                    : gameState === 'COLLAPSED'
+                      ? '/results/collapsed.svg'
+                      : '/results/busted.svg'
+                }
+                alt={gameState === 'WON' ? 'WINNER' : gameState === 'COLLAPSED' ? 'COLLAPSED' : 'BUSTED'}
+                className="w-[80vw] max-w-[640px] h-auto select-none"
+                draggable={false}
+              />
               {gameState === 'WON' && (
-                <div className="text-xl md:text-3xl font-display text-white">
+                <div className="text-xl md:text-3xl font-display font-black text-white glow-blue">
                   +${(betAmount * (currentMultiplier + bonusTotal)).toFixed(2)}
                 </div>
               )}
