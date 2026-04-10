@@ -47,11 +47,15 @@ aws s3 cp dist/index.html "s3://$BUCKET/index.html" \
   --content-type "text/html; charset=utf-8"
 
 if [[ "${SKIP_INVALIDATION:-}" != "1" ]]; then
-  log "creating CloudFront invalidation for /index.html"
+  # Invalidate everything: hashed assets are safe (URLs change per build)
+  # but stable-named files in public/ (SVGs, mp3s) reuse the same URL
+  # with long immutable cache, so a wildcard is the only way to ensure
+  # in-place edits to those files actually reach clients.
+  log "creating CloudFront invalidation for /*"
   INVALIDATION_ID="$(
     aws cloudfront create-invalidation \
       --distribution-id "$DISTRIBUTION_ID" \
-      --paths "/index.html" \
+      --paths "/*" \
       --query 'Invalidation.Id' \
       --output text
   )"
