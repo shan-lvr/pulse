@@ -5,6 +5,7 @@ import { StarBackground } from './StarBackground';
 import { BurningStar } from './BurningStar';
 import { MusicVisualizer } from './MusicVisualizer';
 import { LoadingOverlay } from './LoadingOverlay';
+import { PulseLogo } from './PulseLogo';
 import { PRESET_WHITELIST } from '../lib/vfx/preset-whitelist';
 import { 
   GameState, 
@@ -55,6 +56,9 @@ export default function PulseGame() {
   // (Chrome blocks programmatic <audio>.play() until the user has clicked
   // somewhere). We flip this on the first PLACE BET click.
   const [hasInteracted, setHasInteracted] = useState(false);
+  // Each round-start increments this. PulseLogo watches it and triggers a
+  // single-letter Y-axis flip animation, cycling through P → U → L → S → E.
+  const [pulseFlipNonce, setPulseFlipNonce] = useState(0);
   // Auto mode: auto-restart the next round after each result.
   const [autoMode, setAutoMode] = useState(true);
   // Optional auto cash-out at AUTO_TARGET_WAVE — independent of autoMode.
@@ -85,6 +89,7 @@ export default function PulseGame() {
       return;
     }
     setHasInteracted(true);
+    setPulseFlipNonce((n) => n + 1);
     setBalance(prev => prev - betAmount);
     setGameState('PLAYING');
     setWave(1);
@@ -310,11 +315,9 @@ export default function PulseGame() {
         </div>
 
         <div className="flex flex-col items-center justify-self-center">
-          <img
-            src="/results/pulse.svg"
-            alt="PULSE"
+          <PulseLogo
+            flipNonce={pulseFlipNonce}
             className="block w-[160px] md:w-[260px] h-auto select-none"
-            draggable={false}
           />
         </div>
 
