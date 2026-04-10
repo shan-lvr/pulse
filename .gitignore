@@ -11,3 +11,4 @@ coverage/
 .playwright-mcp/
 pulse-site-cloudfront.png
 pulse-viz-*.png
+pulse-audio-*.png

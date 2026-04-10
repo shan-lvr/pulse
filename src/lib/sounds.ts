@@ -1,19 +1,14 @@
 import { Howl } from 'howler';
 
-// Sci-fi sound effects URLs
+// ElevenLabs-generated audio assets (see scripts/generate-audio.mjs).
+// Files live in public/ and are served from the site root.
 const SOUND_URLS = {
-  // Sci-fi whoosh / transition - Trying a different URL
-  WAVE_START: 'https://assets.mixkit.co/active_storage/sfx/2569/2569-preview.mp3', 
-  // Success chime
-  WIN: 'https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3',        
-  // Sci-fi explosion / glitch / fail
-  COLLAPSE: 'https://assets.mixkit.co/active_storage/sfx/2567/2567-preview.mp3',   
-  // Digital alert / notification
-  BONUS: 'https://assets.mixkit.co/active_storage/sfx/2570/2570-preview.mp3',      
-  // Rhythmic pulse sound
-  PULSE: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
-  // Background Music
-  BGM: '/Background.wav',
+  WAVE_START: '/sfx/wave-start.mp3',
+  WIN: '/sfx/win.mp3',
+  COLLAPSE: '/sfx/collapse.mp3',
+  BONUS: '/sfx/bonus.mp3',
+  PULSE: '/sfx/pulse.mp3',
+  BGM: '/bgm.mp3',
 };
 
 class SoundManager {

@@ -33,13 +33,6 @@ fi
 
 [[ -d dist && -f dist/index.html ]] || die "dist/ missing or incomplete — run a build first"
 
-# Vite does not use a public/ dir here, so Background.wav (at repo root) is
-# not copied automatically. Mirror it into dist/ before sync.
-if [[ -f Background.wav ]]; then
-  log "copying Background.wav → dist/"
-  cp Background.wav dist/Background.wav
-fi
-
 log "syncing immutable assets → s3://$BUCKET"
 aws s3 sync dist/ "s3://$BUCKET/" \
   --region "$REGION" \
