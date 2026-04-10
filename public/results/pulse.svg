@@ -1,85 +1,157 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220" width="800" height="220">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" width="800" height="240">
   <defs>
-    <!-- PULSE letterforms — chunky 18px stroke block style, baseline y=160, cap-height y=60 -->
-    <!-- P: full-height vertical bar + closed loop in the UPPER half only -->
-    <path id="p-P" d="M 130 160 L 130 60 L 215 60 L 215 105 L 130 105" />
-    <path id="p-U" d="M 270 60 L 270 145 L 290 160 L 340 160 L 360 145 L 360 60" />
-    <path id="p-L" d="M 390 60 L 390 160 L 460 160" />
-    <path id="p-S" d="M 570 60 L 490 60 L 490 105 L 570 105 L 570 160 L 490 160" />
-    <path id="p-E" d="M 670 60 L 600 60 L 600 105 L 660 105 M 600 105 L 600 160 L 670 160" />
+    <!-- PULSE letterforms — drawn around local (0,0). 100 tall, ~85 wide. -->
+    <path id="p-P" d="M -42 50 L -42 -50 L 43 -50 L 43 -5 L -42 -5" />
+    <path id="p-U" d="M -45 -50 L -45 35 L -25 50 L 25 50 L 45 35 L 45 -50" />
+    <path id="p-L" d="M -35 -50 L -35 50 L 35 50" />
+    <path id="p-S" d="M 40 -50 L -40 -50 L -40 -5 L 40 -5 L 40 50 L -40 50" />
+    <path id="p-E" d="M 35 -50 L -35 -50 L -35 -5 L 25 -5 M -35 -5 L -35 50 L 35 50" />
 
-    <!-- Cyan glow filter (single pass — header stays performant) -->
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="5" />
+    <!-- Wide soft cyan halo (outermost aura) -->
+    <filter id="haloFar" x="-150%" y="-150%" width="400%" height="400%">
+      <feGaussianBlur stdDeviation="10" />
+    </filter>
+    <!-- Tight inner glow (mid layer) -->
+    <filter id="haloNear" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="3.5" />
+    </filter>
+    <!-- Core sharpener (white outer pass) -->
+    <filter id="coreShine" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.2" />
     </filter>
 
-    <linearGradient id="hud-line" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%"   stop-color="#22d3ee" stop-opacity="0" />
-      <stop offset="20%"  stop-color="#22d3ee" stop-opacity="0.9" />
-      <stop offset="50%"  stop-color="#ffffff" stop-opacity="1" />
-      <stop offset="80%"  stop-color="#22d3ee" stop-opacity="0.9" />
-      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0" />
-    </linearGradient>
+    <!-- 5-pass letter stack: thick outer halo → mid cyan glow → cyan rim →
+         thick white outer core → thin white inner core. Together this gives
+         a perceptibly thick, deeply-glowing letter. -->
+    <symbol id="L-P" overflow="visible">
+      <use href="#p-P" stroke="#0e7490" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#haloFar)"  opacity="0.55" />
+      <use href="#p-P" stroke="#22d3ee" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#haloNear)" opacity="0.85" />
+      <use href="#p-P" stroke="#67e8f9" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#haloNear)" opacity="0.95" />
+      <use href="#p-P" stroke="#ffffff" stroke-width="9"  stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#coreShine)" />
+      <use href="#p-P" stroke="#ffffff" stroke-width="4"  stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    </symbol>
+    <symbol id="L-U" overflow="visible">
+      <use href="#p-U" stroke="#0e7490" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#haloFar)"  opacity="0.55" />
+      <use href="#p-U" stroke="#22d3ee" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#haloNear)" opacity="0.85" />
+      <use href="#p-U" stroke="#67e8f9" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#haloNear)" opacity="0.95" />
+      <use href="#p-U" stroke="#ffffff" stroke-width="9"  stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#coreShine)" />
+      <use href="#p-U" stroke="#ffffff" stroke-width="4"  stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    </symbol>
+    <symbol id="L-L" overflow="visible">
+      <use href="#p-L" stroke="#0e7490" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#haloFar)"  opacity="0.55" />
+      <use href="#p-L" stroke="#22d3ee" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#haloNear)" opacity="0.85" />
+      <use href="#p-L" stroke="#67e8f9" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#haloNear)" opacity="0.95" />
+      <use href="#p-L" stroke="#ffffff" stroke-width="9"  stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#coreShine)" />
+      <use href="#p-L" stroke="#ffffff" stroke-width="4"  stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    </symbol>
+    <symbol id="L-S" overflow="visible">
+      <use href="#p-S" stroke="#0e7490" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#haloFar)"  opacity="0.55" />
+      <use href="#p-S" stroke="#22d3ee" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#haloNear)" opacity="0.85" />
+      <use href="#p-S" stroke="#67e8f9" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#haloNear)" opacity="0.95" />
+      <use href="#p-S" stroke="#ffffff" stroke-width="9"  stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#coreShine)" />
+      <use href="#p-S" stroke="#ffffff" stroke-width="4"  stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    </symbol>
+    <symbol id="L-E" overflow="visible">
+      <use href="#p-E" stroke="#0e7490" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#haloFar)"  opacity="0.55" />
+      <use href="#p-E" stroke="#22d3ee" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#haloNear)" opacity="0.85" />
+      <use href="#p-E" stroke="#67e8f9" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#haloNear)" opacity="0.95" />
+      <use href="#p-E" stroke="#ffffff" stroke-width="9"  stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#coreShine)" />
+      <use href="#p-E" stroke="#ffffff" stroke-width="4"  stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    </symbol>
   </defs>
 
-  <!-- TRANSPARENT background -->
+  <!-- Pulse rhythm: 1.2s period.
+       During the FIRST half of the period each letter does one full
+       holographic Y-flip (scaleX 1 → 0 → -1 → 0 → 1) and the glow
+       brightens. During the second half it rests at full brightness 1.
+       Both rotation and opacity share the same timeline so the spin
+       and the glow throb on the same beat — feels like a pulse.
 
-  <!-- Corner brackets — small, framing the header -->
-  <g stroke="#67e8f9" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter" fill="none" opacity="0">
-    <path d="M 70 65 L 70 35 L 100 35" />
-    <path d="M 730 65 L 730 35 L 700 35" />
-    <path d="M 70 155 L 70 185 L 100 185" />
-    <path d="M 730 155 L 730 185 L 700 185" />
-    <animate attributeName="opacity" values="0;0.8" begin="0.05s" dur="0.15s" fill="freeze" />
+       Letters are staggered by 0.24s (1.2s / 5) so the wave sweeps
+       through PULSE on every cycle. -->
+
+  <g transform="translate(120 120)">
+    <g opacity="0.85">
+      <animateTransform attributeName="transform" attributeType="XML"
+        type="scale"
+        values="1 1; 0 1; -1 1; 0 1; 1 1; 1 1"
+        keyTimes="0; 0.125; 0.25; 0.375; 0.5; 1"
+        calcMode="spline"
+        keySplines="0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.5 0 0.5 1"
+        dur="1.2s" repeatCount="indefinite" begin="0s" />
+      <animate attributeName="opacity"
+        values="0.85; 1.0; 0.92; 1.0; 1.0; 0.85"
+        keyTimes="0; 0.15; 0.35; 0.5; 0.85; 1"
+        dur="1.2s" repeatCount="indefinite" begin="0s" />
+      <use href="#L-P" />
+    </g>
   </g>
 
-  <!-- Horizontal HUD line under the wordmark — sweeps in -->
-  <line x1="400" y1="195" x2="400" y2="195" stroke="url(#hud-line)" stroke-width="2.5">
-    <animate attributeName="x1" values="400;130" begin="0.45s" dur="0.5s" calcMode="spline" keySplines="0.1 0.8 0.2 1" fill="freeze" />
-    <animate attributeName="x2" values="400;670" begin="0.45s" dur="0.5s" calcMode="spline" keySplines="0.1 0.8 0.2 1" fill="freeze" />
-  </line>
-
-  <!-- Cyan glow halo behind text -->
-  <g filter="url(#glow)" stroke="#22d3ee" stroke-width="20" stroke-linecap="square" stroke-linejoin="miter" fill="none" opacity="0">
-    <animate attributeName="opacity" values="0;0.9;0.65;0.85" keyTimes="0;0.25;0.6;1" begin="0.45s" dur="0.7s" fill="freeze" />
-    <use href="#p-P" />
-    <use href="#p-U" />
-    <use href="#p-L" />
-    <use href="#p-S" />
-    <use href="#p-E" />
+  <g transform="translate(255 120)">
+    <g opacity="0.85">
+      <animateTransform attributeName="transform" attributeType="XML"
+        type="scale"
+        values="1 1; 0 1; -1 1; 0 1; 1 1; 1 1"
+        keyTimes="0; 0.125; 0.25; 0.375; 0.5; 1"
+        calcMode="spline"
+        keySplines="0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.5 0 0.5 1"
+        dur="1.2s" repeatCount="indefinite" begin="-0.24s" />
+      <animate attributeName="opacity"
+        values="0.85; 1.0; 0.92; 1.0; 1.0; 0.85"
+        keyTimes="0; 0.15; 0.35; 0.5; 0.85; 1"
+        dur="1.2s" repeatCount="indefinite" begin="-0.24s" />
+      <use href="#L-U" />
+    </g>
   </g>
 
-  <!-- Core letters with brief RGB-split glitch reveal -->
-  <g stroke-width="14" stroke-linecap="square" stroke-linejoin="miter" fill="none">
-    <g opacity="0">
-      <animate attributeName="opacity" values="0;1" begin="0.15s" dur="0.01s" fill="freeze" />
-      <use href="#p-P" stroke="#6ee7b7"><animateTransform attributeName="transform" type="translate" values="6,0;-4,2;0,0" begin="0.15s" dur="0.18s" fill="freeze" /><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.85;1" begin="0.15s" dur="0.18s" fill="freeze" /></use>
-      <use href="#p-P" stroke="#22d3ee"><animateTransform attributeName="transform" type="translate" values="-6,0;4,-2;0,0" begin="0.15s" dur="0.18s" fill="freeze" /><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.85;1" begin="0.15s" dur="0.18s" fill="freeze" /></use>
-      <use href="#p-P" stroke="#ffffff" opacity="0"><animate attributeName="opacity" values="0;0.5;1" keyTimes="0;0.5;1" begin="0.15s" dur="0.18s" fill="freeze" /></use>
+  <g transform="translate(385 120)">
+    <g opacity="0.85">
+      <animateTransform attributeName="transform" attributeType="XML"
+        type="scale"
+        values="1 1; 0 1; -1 1; 0 1; 1 1; 1 1"
+        keyTimes="0; 0.125; 0.25; 0.375; 0.5; 1"
+        calcMode="spline"
+        keySplines="0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.5 0 0.5 1"
+        dur="1.2s" repeatCount="indefinite" begin="-0.48s" />
+      <animate attributeName="opacity"
+        values="0.85; 1.0; 0.92; 1.0; 1.0; 0.85"
+        keyTimes="0; 0.15; 0.35; 0.5; 0.85; 1"
+        dur="1.2s" repeatCount="indefinite" begin="-0.48s" />
+      <use href="#L-L" />
     </g>
-    <g opacity="0">
-      <animate attributeName="opacity" values="0;1" begin="0.22s" dur="0.01s" fill="freeze" />
-      <use href="#p-U" stroke="#6ee7b7"><animateTransform attributeName="transform" type="translate" values="6,0;-4,2;0,0" begin="0.22s" dur="0.18s" fill="freeze" /><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.85;1" begin="0.22s" dur="0.18s" fill="freeze" /></use>
-      <use href="#p-U" stroke="#22d3ee"><animateTransform attributeName="transform" type="translate" values="-6,0;4,-2;0,0" begin="0.22s" dur="0.18s" fill="freeze" /><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.85;1" begin="0.22s" dur="0.18s" fill="freeze" /></use>
-      <use href="#p-U" stroke="#ffffff" opacity="0"><animate attributeName="opacity" values="0;0.5;1" keyTimes="0;0.5;1" begin="0.22s" dur="0.18s" fill="freeze" /></use>
+  </g>
+
+  <g transform="translate(515 120)">
+    <g opacity="0.85">
+      <animateTransform attributeName="transform" attributeType="XML"
+        type="scale"
+        values="1 1; 0 1; -1 1; 0 1; 1 1; 1 1"
+        keyTimes="0; 0.125; 0.25; 0.375; 0.5; 1"
+        calcMode="spline"
+        keySplines="0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.5 0 0.5 1"
+        dur="1.2s" repeatCount="indefinite" begin="-0.72s" />
+      <animate attributeName="opacity"
+        values="0.85; 1.0; 0.92; 1.0; 1.0; 0.85"
+        keyTimes="0; 0.15; 0.35; 0.5; 0.85; 1"
+        dur="1.2s" repeatCount="indefinite" begin="-0.72s" />
+      <use href="#L-S" />
     </g>
-    <g opacity="0">
-      <animate attributeName="opacity" values="0;1" begin="0.29s" dur="0.01s" fill="freeze" />
-      <use href="#p-L" stroke="#6ee7b7"><animateTransform attributeName="transform" type="translate" values="6,0;-4,2;0,0" begin="0.29s" dur="0.18s" fill="freeze" /><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.85;1" begin="0.29s" dur="0.18s" fill="freeze" /></use>
-      <use href="#p-L" stroke="#22d3ee"><animateTransform attributeName="transform" type="translate" values="-6,0;4,-2;0,0" begin="0.29s" dur="0.18s" fill="freeze" /><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.85;1" begin="0.29s" dur="0.18s" fill="freeze" /></use>
-      <use href="#p-L" stroke="#ffffff" opacity="0"><animate attributeName="opacity" values="0;0.5;1" keyTimes="0;0.5;1" begin="0.29s" dur="0.18s" fill="freeze" /></use>
-    </g>
-    <g opacity="0">
-      <animate attributeName="opacity" values="0;1" begin="0.36s" dur="0.01s" fill="freeze" />
-      <use href="#p-S" stroke="#6ee7b7"><animateTransform attributeName="transform" type="translate" values="6,0;-4,2;0,0" begin="0.36s" dur="0.18s" fill="freeze" /><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.85;1" begin="0.36s" dur="0.18s" fill="freeze" /></use>
-      <use href="#p-S" stroke="#22d3ee"><animateTransform attributeName="transform" type="translate" values="-6,0;4,-2;0,0" begin="0.36s" dur="0.18s" fill="freeze" /><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.85;1" begin="0.36s" dur="0.18s" fill="freeze" /></use>
-      <use href="#p-S" stroke="#ffffff" opacity="0"><animate attributeName="opacity" values="0;0.5;1" keyTimes="0;0.5;1" begin="0.36s" dur="0.18s" fill="freeze" /></use>
-    </g>
-    <g opacity="0">
-      <animate attributeName="opacity" values="0;1" begin="0.43s" dur="0.01s" fill="freeze" />
-      <use href="#p-E" stroke="#6ee7b7"><animateTransform attributeName="transform" type="translate" values="6,0;-4,2;0,0" begin="0.43s" dur="0.18s" fill="freeze" /><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.85;1" begin="0.43s" dur="0.18s" fill="freeze" /></use>
-      <use href="#p-E" stroke="#22d3ee"><animateTransform attributeName="transform" type="translate" values="-6,0;4,-2;0,0" begin="0.43s" dur="0.18s" fill="freeze" /><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.85;1" begin="0.43s" dur="0.18s" fill="freeze" /></use>
-      <use href="#p-E" stroke="#ffffff" opacity="0"><animate attributeName="opacity" values="0;0.5;1" keyTimes="0;0.5;1" begin="0.43s" dur="0.18s" fill="freeze" /></use>
+  </g>
+
+  <g transform="translate(650 120)">
+    <g opacity="0.85">
+      <animateTransform attributeName="transform" attributeType="XML"
+        type="scale"
+        values="1 1; 0 1; -1 1; 0 1; 1 1; 1 1"
+        keyTimes="0; 0.125; 0.25; 0.375; 0.5; 1"
+        calcMode="spline"
+        keySplines="0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.5 0 0.5 1"
+        dur="1.2s" repeatCount="indefinite" begin="-0.96s" />
+      <animate attributeName="opacity"
+        values="0.85; 1.0; 0.92; 1.0; 1.0; 0.85"
+        keyTimes="0; 0.15; 0.35; 0.5; 0.85; 1"
+        dur="1.2s" repeatCount="indefinite" begin="-0.96s" />
+      <use href="#L-E" />
     </g>
   </g>
 </svg>

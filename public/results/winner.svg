@@ -47,17 +47,7 @@
     <animate attributeName="x1" values="0;0;800" keyTimes="0;0.5;1" begin="0.05s" dur="0.30s" fill="freeze" />
   </line>
 
-  <!-- HUD lines extending out -->
-  <g>
-    <line x1="400" y1="40" x2="400" y2="40" stroke="url(#hud-line)" stroke-width="3">
-      <animate attributeName="x1" values="400;100" begin="0.55s" dur="0.4s" calcMode="spline" keySplines="0.1 0.8 0.2 1" fill="freeze" />
-      <animate attributeName="x2" values="400;700" begin="0.55s" dur="0.4s" calcMode="spline" keySplines="0.1 0.8 0.2 1" fill="freeze" />
-    </line>
-    <line x1="400" y1="220" x2="400" y2="220" stroke="url(#hud-line)" stroke-width="3">
-      <animate attributeName="x1" values="400;100" begin="0.55s" dur="0.4s" calcMode="spline" keySplines="0.1 0.8 0.2 1" fill="freeze" />
-      <animate attributeName="x2" values="400;700" begin="0.55s" dur="0.4s" calcMode="spline" keySplines="0.1 0.8 0.2 1" fill="freeze" />
-    </line>
-  </g>
+  <!-- (removed: top/bottom HUD lines that read as a rectangular border) -->
 
   <!-- Soft cyan halo behind text (the GLOW LAYER) -->
   <g filter="url(#glow)" stroke="#22d3ee" stroke-width="22" stroke-linecap="square" stroke-linejoin="miter" fill="none" opacity="0">
@@ -110,21 +100,5 @@
     </g>
   </g>
 
-  <!-- Data tick rows on the sides — appear at 0.7s -->
-  <g stroke="#22d3ee" stroke-width="2" opacity="0">
-    <animate attributeName="opacity" values="0;0.8" begin="0.70s" dur="0.2s" fill="freeze" />
-    <line x1="55" y1="80"  x2="75" y2="80" />
-    <line x1="55" y1="100" x2="68" y2="100" />
-    <line x1="55" y1="120" x2="75" y2="120" />
-    <line x1="55" y1="140" x2="68" y2="140" />
-    <line x1="55" y1="160" x2="75" y2="160" />
-    <line x1="55" y1="180" x2="68" y2="180" />
-
-    <line x1="725" y1="80"  x2="745" y2="80" />
-    <line x1="732" y1="100" x2="745" y2="100" />
-    <line x1="725" y1="120" x2="745" y2="120" />
-    <line x1="732" y1="140" x2="745" y2="140" />
-    <line x1="725" y1="160" x2="745" y2="160" />
-    <line x1="732" y1="180" x2="745" y2="180" />
-  </g>
+  <!-- (removed: side data ticks that read as left/right border accents) -->
 </svg>

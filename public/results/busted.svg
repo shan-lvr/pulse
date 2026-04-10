@@ -49,15 +49,7 @@
     <animate attributeName="x1" values="0;0;800" keyTimes="0;0.5;1" begin="0.05s" dur="0.30s" fill="freeze" />
   </line>
 
-  <!-- HUD lines -->
-  <line x1="400" y1="40" x2="400" y2="40" stroke="url(#hud-line)" stroke-width="3">
-    <animate attributeName="x1" values="400;100" begin="0.55s" dur="0.4s" calcMode="spline" keySplines="0.1 0.8 0.2 1" fill="freeze" />
-    <animate attributeName="x2" values="400;700" begin="0.55s" dur="0.4s" calcMode="spline" keySplines="0.1 0.8 0.2 1" fill="freeze" />
-  </line>
-  <line x1="400" y1="220" x2="400" y2="220" stroke="url(#hud-line)" stroke-width="3">
-    <animate attributeName="x1" values="400;100" begin="0.55s" dur="0.4s" calcMode="spline" keySplines="0.1 0.8 0.2 1" fill="freeze" />
-    <animate attributeName="x2" values="400;700" begin="0.55s" dur="0.4s" calcMode="spline" keySplines="0.1 0.8 0.2 1" fill="freeze" />
-  </line>
+  <!-- (removed: top/bottom HUD lines that read as a rectangular border) -->
 
   <!-- Red halo behind text -->
   <g filter="url(#glow)" stroke="#ef4444" stroke-width="22" stroke-linecap="square" stroke-linejoin="miter" fill="none" opacity="0">
