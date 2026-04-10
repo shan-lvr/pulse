@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { PulseCanvas } from './PulseCanvas';
 import { StarBackground } from './StarBackground';
 import { BurningStar } from './BurningStar';
+import { MusicVisualizer } from './MusicVisualizer';
 import { 
   GameState, 
   generateSegments, 
@@ -194,6 +195,7 @@ export default function PulseGame() {
     <div className="min-h-screen flex flex-col items-center justify-between p-4 md:p-6 relative overflow-hidden bg-[#020617]">
       <StarBackground gameState={gameState} />
       <div className="atmosphere" />
+      <MusicVisualizer enabled={!isMuted} opacity={0.45} blendMode="screen" />
       
       {/* Header */}
       <div className="w-full max-w-6xl flex justify-between items-center z-10 gap-2">

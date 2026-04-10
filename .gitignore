@@ -10,3 +10,4 @@ coverage/
 # Local test artifacts
 .playwright-mcp/
 pulse-site-cloudfront.png
+pulse-viz-*.png
