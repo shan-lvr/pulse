@@ -46,6 +46,14 @@ export default function PulseGame() {
   const [history, setHistory] = useState<{ multiplier: number, won: boolean, amount: number }[]>([]);
   const [isMuted, setIsMuted] = useState(false);
   const [vizEnabled, setVizEnabled] = useState(true);
+  // Auto mode: auto-restart the next round after each result.
+  const [autoMode, setAutoMode] = useState(true);
+  // Optional auto cash-out at AUTO_TARGET_WAVE — independent of autoMode.
+  const [autoCashOut, setAutoCashOut] = useState(false);
+  const AUTO_TARGET_WAVE = 2; // cash out as soon as wave reaches this
+  // Track pending auto timers so they can be cancelled if the user toggles
+  // auto off mid-cycle, or unmounts.
+  const autoTimerRef = useRef<number | null>(null);
 
   const gameLoopRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
@@ -184,6 +192,63 @@ export default function PulseGame() {
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
   }, [gameState, wave, collapseWave, betAmount, segments, bonusTotal]);
+
+  // ─── Auto mode ──────────────────────────────────────────────────────────
+  // Cancel any pending auto timers whenever auto mode flips off or game state
+  // changes mid-cycle.
+  const clearAutoTimer = () => {
+    if (autoTimerRef.current !== null) {
+      window.clearTimeout(autoTimerRef.current);
+      autoTimerRef.current = null;
+    }
+  };
+
+  // Auto cash-out: as soon as wave reaches the target while playing.
+  // Independent of autoMode — driven by its own toggle.
+  useEffect(() => {
+    if (!autoCashOut) return;
+    if (gameState !== 'PLAYING') return;
+    if (wave < AUTO_TARGET_WAVE) return;
+    clearAutoTimer();
+    // Tiny randomized delay so the landing segment isn't always identical
+    // (the rotation advances ~30-50° during this window).
+    autoTimerRef.current = window.setTimeout(() => {
+      autoTimerRef.current = null;
+      cashOut();
+    }, 180 + Math.random() * 220);
+    return clearAutoTimer;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoCashOut, gameState, wave]);
+
+  // Auto restart: after a result banner has been visible for ~1.6s, dismiss
+  // it (back to IDLE) and immediately place a new bet on the next tick.
+  useEffect(() => {
+    if (!autoMode) return;
+    if (gameState !== 'WON' && gameState !== 'LOST' && gameState !== 'COLLAPSED') return;
+    clearAutoTimer();
+    autoTimerRef.current = window.setTimeout(() => {
+      autoTimerRef.current = null;
+      setGameState('IDLE');
+    }, 1700);
+    return clearAutoTimer;
+  }, [autoMode, gameState]);
+
+  // After IDLE in auto mode, kick off the next bet.
+  useEffect(() => {
+    if (!autoMode) return;
+    if (gameState !== 'IDLE') return;
+    if (betAmount > balance) return; // out of money — stop
+    clearAutoTimer();
+    autoTimerRef.current = window.setTimeout(() => {
+      autoTimerRef.current = null;
+      startGame();
+    }, 350);
+    return clearAutoTimer;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoMode, gameState, balance, betAmount]);
+
+  // Final cleanup on unmount
+  useEffect(() => () => clearAutoTimer(), []);
 
   const toggleMute = () => {
     const newMuted = !isMuted;
@@ -406,15 +471,41 @@ export default function PulseGame() {
         </div>
       </div>
 
-      {/* Background visualizer toggle (bottom-right, fixed) */}
-      <button
-        onClick={() => setVizEnabled(v => !v)}
-        aria-label={vizEnabled ? 'Disable background visualizer' : 'Enable background visualizer'}
-        title={vizEnabled ? 'Disable background FX' : 'Enable background FX'}
-        className="fixed bottom-3 right-3 z-[60] text-[9px] md:text-[10px] font-bold tracking-[0.15em] uppercase px-2.5 py-1.5 rounded-md border border-white/15 bg-black/50 backdrop-blur-md text-white/70 hover:text-white hover:bg-black/70 transition-colors"
-      >
-        FX {vizEnabled ? 'ON' : 'OFF'}
-      </button>
+      {/* Bottom-right toggle stack (auto + auto cash-out + FX) */}
+      <div className="fixed bottom-3 right-3 z-[60] flex flex-col items-end gap-1.5">
+        <button
+          onClick={() => setAutoMode(v => !v)}
+          aria-label={autoMode ? 'Disable auto play' : 'Enable auto play'}
+          title={autoMode ? 'Disable auto play' : 'Enable auto play'}
+          className={`text-[9px] md:text-[10px] font-bold tracking-[0.15em] uppercase px-2.5 py-1.5 rounded-md border backdrop-blur-md transition-colors ${
+            autoMode
+              ? 'border-emerald-400/60 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
+              : 'border-white/15 bg-black/50 text-white/60 hover:text-white hover:bg-black/70'
+          }`}
+        >
+          AUTO {autoMode ? 'ON' : 'OFF'}
+        </button>
+        <button
+          onClick={() => setAutoCashOut(v => !v)}
+          aria-label={autoCashOut ? 'Disable auto cash out' : 'Enable auto cash out'}
+          title={`Auto cash out at wave ${AUTO_TARGET_WAVE}`}
+          className={`text-[9px] md:text-[10px] font-bold tracking-[0.15em] uppercase px-2.5 py-1.5 rounded-md border backdrop-blur-md transition-colors ${
+            autoCashOut
+              ? 'border-amber-400/60 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25'
+              : 'border-white/15 bg-black/50 text-white/60 hover:text-white hover:bg-black/70'
+          }`}
+        >
+          AUTO CASHOUT {autoCashOut ? 'ON' : 'OFF'}
+        </button>
+        <button
+          onClick={() => setVizEnabled(v => !v)}
+          aria-label={vizEnabled ? 'Disable background visualizer' : 'Enable background visualizer'}
+          title={vizEnabled ? 'Disable background FX' : 'Enable background FX'}
+          className="text-[9px] md:text-[10px] font-bold tracking-[0.15em] uppercase px-2.5 py-1.5 rounded-md border border-white/15 bg-black/50 backdrop-blur-md text-white/70 hover:text-white hover:bg-black/70 transition-colors"
+        >
+          FX {vizEnabled ? 'ON' : 'OFF'}
+        </button>
+      </div>
 
       {/* Result Overlay — SVG banner with SMIL animation, replays on state change */}
       <AnimatePresence>
