@@ -285,8 +285,12 @@ export default function PulseGame() {
         </div>
 
         <div className="flex flex-col items-center justify-self-center">
-          <div className="text-3xl md:text-5xl font-display font-black tracking-tighter text-white glow-blue italic">PULSE</div>
-          <div className="ui-line w-24 md:w-48 mt-1" />
+          <img
+            src="/results/pulse.svg"
+            alt="PULSE"
+            className="block w-[160px] md:w-[260px] h-auto select-none"
+            draggable={false}
+          />
         </div>
 
         <div className="flex flex-col items-end justify-self-end">
@@ -425,7 +429,7 @@ export default function PulseGame() {
             </div>
             <div className="h-6 md:h-8 flex items-end">
               {wave >= collapseWave - 1 && gameState === 'PLAYING' && (
-                <motion.div 
+                <motion.div
                   animate={{ opacity: [1, 0, 1] }}
                   transition={{ duration: 0.5, repeat: Infinity }}
                   className="flex items-center gap-1 md:gap-2 text-red-500 font-display font-bold text-xs md:text-sm glow-red"
@@ -437,6 +441,46 @@ export default function PulseGame() {
             </div>
             <div className="text-[8px] md:text-[10px] font-bold tracking-[0.2em] text-sky-400/60 uppercase mt-1 md:mt-2">Balance</div>
             <div className="text-lg md:text-xl font-display font-bold text-white/60">${balance.toFixed(2)}</div>
+
+            {/* Toggle row — sits to the right of the central PLACE BET / CASH OUT button */}
+            <div className="flex flex-wrap gap-1.5 mt-3 justify-center md:justify-end">
+              <button
+                onClick={() => setAutoMode(v => !v)}
+                aria-label={autoMode ? 'Disable auto play' : 'Enable auto play'}
+                title={autoMode ? 'Disable auto play' : 'Enable auto play'}
+                className={`text-[9px] md:text-[10px] font-bold tracking-[0.15em] uppercase px-2.5 py-1.5 rounded-md border backdrop-blur-md transition-colors ${
+                  autoMode
+                    ? 'border-emerald-400/60 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
+                    : 'border-white/15 bg-white/[0.04] text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                AUTO {autoMode ? 'ON' : 'OFF'}
+              </button>
+              <button
+                onClick={() => setAutoCashOut(v => !v)}
+                aria-label={autoCashOut ? 'Disable auto cash out' : 'Enable auto cash out'}
+                title={`Auto cash out at wave ${AUTO_TARGET_WAVE}`}
+                className={`text-[9px] md:text-[10px] font-bold tracking-[0.15em] uppercase px-2.5 py-1.5 rounded-md border backdrop-blur-md transition-colors ${
+                  autoCashOut
+                    ? 'border-amber-400/60 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25'
+                    : 'border-white/15 bg-white/[0.04] text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                AUTO CASHOUT {autoCashOut ? 'ON' : 'OFF'}
+              </button>
+              <button
+                onClick={() => setVizEnabled(v => !v)}
+                aria-label={vizEnabled ? 'Disable background visualizer' : 'Enable background visualizer'}
+                title={vizEnabled ? 'Disable background FX' : 'Enable background FX'}
+                className={`text-[9px] md:text-[10px] font-bold tracking-[0.15em] uppercase px-2.5 py-1.5 rounded-md border backdrop-blur-md transition-colors ${
+                  vizEnabled
+                    ? 'border-sky-400/60 bg-sky-500/15 text-sky-300 hover:bg-sky-500/25'
+                    : 'border-white/15 bg-white/[0.04] text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                FX {vizEnabled ? 'ON' : 'OFF'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -469,42 +513,6 @@ export default function PulseGame() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Bottom-right toggle stack (auto + auto cash-out + FX) */}
-      <div className="fixed bottom-3 right-3 z-[60] flex flex-col items-end gap-1.5">
-        <button
-          onClick={() => setAutoMode(v => !v)}
-          aria-label={autoMode ? 'Disable auto play' : 'Enable auto play'}
-          title={autoMode ? 'Disable auto play' : 'Enable auto play'}
-          className={`text-[9px] md:text-[10px] font-bold tracking-[0.15em] uppercase px-2.5 py-1.5 rounded-md border backdrop-blur-md transition-colors ${
-            autoMode
-              ? 'border-emerald-400/60 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
-              : 'border-white/15 bg-black/50 text-white/60 hover:text-white hover:bg-black/70'
-          }`}
-        >
-          AUTO {autoMode ? 'ON' : 'OFF'}
-        </button>
-        <button
-          onClick={() => setAutoCashOut(v => !v)}
-          aria-label={autoCashOut ? 'Disable auto cash out' : 'Enable auto cash out'}
-          title={`Auto cash out at wave ${AUTO_TARGET_WAVE}`}
-          className={`text-[9px] md:text-[10px] font-bold tracking-[0.15em] uppercase px-2.5 py-1.5 rounded-md border backdrop-blur-md transition-colors ${
-            autoCashOut
-              ? 'border-amber-400/60 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25'
-              : 'border-white/15 bg-black/50 text-white/60 hover:text-white hover:bg-black/70'
-          }`}
-        >
-          AUTO CASHOUT {autoCashOut ? 'ON' : 'OFF'}
-        </button>
-        <button
-          onClick={() => setVizEnabled(v => !v)}
-          aria-label={vizEnabled ? 'Disable background visualizer' : 'Enable background visualizer'}
-          title={vizEnabled ? 'Disable background FX' : 'Enable background FX'}
-          className="text-[9px] md:text-[10px] font-bold tracking-[0.15em] uppercase px-2.5 py-1.5 rounded-md border border-white/15 bg-black/50 backdrop-blur-md text-white/70 hover:text-white hover:bg-black/70 transition-colors"
-        >
-          FX {vizEnabled ? 'ON' : 'OFF'}
-        </button>
       </div>
 
       {/* Result Overlay — SVG banner with SMIL animation, replays on state change */}
