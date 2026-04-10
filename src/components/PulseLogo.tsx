@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface PulseLogoProps {
   /** Increment to trigger one letter to play its Y-flip animation. */
@@ -7,10 +7,22 @@ interface PulseLogoProps {
 }
 
 /**
- * PULSE wordmark — chunky cyan-cored block letters with a thick layered
- * glow. Each round-start (incoming `flipNonce` change) triggers exactly
- * ONE letter to do a slow Y-axis hologram flip; the wordmark is otherwise
- * static. Letters cycle P → U → L → S → E → P …
+ * PULSE wordmark — 3D-feeling block letters with chunky cyan glow.
+ *
+ * On every change to `flipNonce`, exactly ONE letter is triggered to play
+ * its Y-axis hologram flip animation. Letters cycle P → U → L → S → E → P…
+ *
+ * Animation is driven by SMIL `<animateTransform begin="indefinite">` on
+ * each letter, triggered programmatically via `beginElement()`. Each
+ * letter has its own animation node, so triggering letter U does not
+ * touch letter P's in-flight animation — they run independently and
+ * naturally finish.
+ *
+ * SMIL also handles the rotation pivot correctly: with the letter paths
+ * drawn around local (0,0) and the parent group doing the translate,
+ * `type="scale"` with no center argument naturally pivots around (0,0)
+ * which IS the letter's geometric center → never drifts sideways into
+ * a neighbor letter's slot.
  */
 const LETTERS = [
   { id: 'P', cx: 120 },
@@ -20,30 +32,29 @@ const LETTERS = [
   { id: 'E', cx: 650 },
 ] as const;
 
-const FLIP_DURATION_MS = 20000; // 30% of the previous 6s × ~1/0.3
+const FLIP_DURATION_S = 20;
 
 export const PulseLogo: React.FC<PulseLogoProps> = ({ flipNonce, className }) => {
-  // Track which letter index should currently be playing its animation,
-  // and a remount-key so React can replay the CSS animation on the same
-  // letter if the same nonce comes around again later.
-  const [active, setActive] = useState<{ idx: number; key: number } | null>(null);
-  const cycleCountRef = useRef(0);
+  // One ref per letter for the scale animateTransform; one for opacity.
+  // SMIL elements typed as SVGAnimationElement so we can call beginElement().
+  const flipRefs = useRef<(SVGAnimationElement | null)[]>([null, null, null, null, null]);
+  const glowRefs = useRef<(SVGAnimationElement | null)[]>([null, null, null, null, null]);
+  const cycleRef = useRef(0);
   const lastNonceRef = useRef(flipNonce);
 
   useEffect(() => {
     if (flipNonce === lastNonceRef.current) return;
     lastNonceRef.current = flipNonce;
 
-    // Pick the next letter in the cycle
-    const idx = cycleCountRef.current % LETTERS.length;
-    cycleCountRef.current += 1;
+    const idx = cycleRef.current % LETTERS.length;
+    cycleRef.current += 1;
 
-    setActive({ idx, key: flipNonce });
-
-    const tid = window.setTimeout(() => {
-      setActive((cur) => (cur && cur.key === flipNonce ? null : cur));
-    }, FLIP_DURATION_MS + 50);
-    return () => window.clearTimeout(tid);
+    try {
+      flipRefs.current[idx]?.beginElement();
+      glowRefs.current[idx]?.beginElement();
+    } catch {
+      /* SMIL beginElement not available — gracefully degrade */
+    }
   }, [flipNonce]);
 
   return (
@@ -55,7 +66,7 @@ export const PulseLogo: React.FC<PulseLogoProps> = ({ flipNonce, className }) =>
       className={className}
     >
       <defs>
-        {/* Letter paths drawn around local (0,0) */}
+        {/* Letter glyph paths drawn around local (0,0) — pivot is the letter center */}
         <path id="pl-P" d="M -42 50 L -42 -50 L 43 -50 L 43 -5 L -42 -5" />
         <path id="pl-U" d="M -45 -50 L -45 35 L -25 50 L 25 50 L 45 35 L 45 -50" />
         <path id="pl-L" d="M -35 -50 L -35 50 L 35 50" />
@@ -69,55 +80,79 @@ export const PulseLogo: React.FC<PulseLogoProps> = ({ flipNonce, className }) =>
           <feGaussianBlur stdDeviation="3.5" />
         </filter>
         <filter id="pl-coreShine" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="1.2" />
+          <feGaussianBlur stdDeviation="1" />
         </filter>
 
+        {/* 9-pass letter stack with extruded depth shadow for 3D feel */}
         {LETTERS.map((l) => (
           <symbol key={l.id} id={`pl-stack-${l.id}`} overflow="visible">
-            <use href={`#pl-${l.id}`} stroke="#0e7490" strokeWidth="34" strokeLinecap="round" strokeLinejoin="round" fill="none" filter="url(#pl-haloFar)"  opacity="0.55" />
+            {/* 1: outermost cyan halo */}
+            <use href={`#pl-${l.id}`} stroke="#0e7490" strokeWidth="34" strokeLinecap="round" strokeLinejoin="round" fill="none" filter="url(#pl-haloFar)" opacity="0.55" />
+            {/* 2: mid cyan aura */}
             <use href={`#pl-${l.id}`} stroke="#22d3ee" strokeWidth="22" strokeLinecap="round" strokeLinejoin="round" fill="none" filter="url(#pl-haloNear)" opacity="0.85" />
+            {/* 3-6: extruded depth — 4 progressively-lighter offset shadow layers */}
+            <g transform="translate(8 10)">
+              <use href={`#pl-${l.id}`} stroke="#020617" strokeWidth="18" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </g>
+            <g transform="translate(6 8)">
+              <use href={`#pl-${l.id}`} stroke="#0c1a2b" strokeWidth="18" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </g>
+            <g transform="translate(4 5)">
+              <use href={`#pl-${l.id}`} stroke="#082f49" strokeWidth="18" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </g>
+            <g transform="translate(2 3)">
+              <use href={`#pl-${l.id}`} stroke="#0c4a6e" strokeWidth="18" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </g>
+            {/* 7: cyan rim */}
             <use href={`#pl-${l.id}`} stroke="#67e8f9" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" fill="none" filter="url(#pl-haloNear)" opacity="0.95" />
-            <use href={`#pl-${l.id}`} stroke="#ffffff" strokeWidth="9"  strokeLinecap="round" strokeLinejoin="round" fill="none" filter="url(#pl-coreShine)" />
-            <use href={`#pl-${l.id}`} stroke="#ffffff" strokeWidth="4"  strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            {/* 8: thick white core */}
+            <use href={`#pl-${l.id}`} stroke="#ffffff" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" fill="none" filter="url(#pl-coreShine)" />
+            {/* 9: sharp white inner */}
+            <use href={`#pl-${l.id}`} stroke="#ffffff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
           </symbol>
         ))}
       </defs>
 
-      {/* CSS keyframe definitions live in <style> inside the SVG so the
-          inline component is fully self-contained. */}
-      <style>{`
-        @keyframes pl-flip {
-          0%   { transform: scale(1, 1);  }
-          25%  { transform: scale(0, 1);  }
-          50%  { transform: scale(-1, 1); }
-          75%  { transform: scale(0, 1);  }
-          100% { transform: scale(1, 1);  }
-        }
-        @keyframes pl-glow {
-          0%, 100% { opacity: 0.85; }
-          50%      { opacity: 1; }
-        }
-        .pl-letter-active {
-          transform-origin: 0 0;
-          transform-box: fill-box;
-          animation: pl-flip ${FLIP_DURATION_MS}ms cubic-bezier(.42,0,.58,1) 1, pl-glow ${FLIP_DURATION_MS}ms ease-in-out 1;
-        }
-      `}</style>
-
-      {LETTERS.map((l, i) => {
-        const isActive = active?.idx === i;
-        // The remount key for the active letter includes the nonce so the
-        // CSS animation restarts cleanly even if the same letter is
-        // re-triggered later.
-        const groupKey = isActive ? `${l.id}-flip-${active!.key}` : `${l.id}-static`;
-        return (
-          <g key={groupKey} transform={`translate(${l.cx} 120)`}>
-            <g className={isActive ? 'pl-letter-active' : ''} opacity={isActive ? undefined : 0.85}>
-              <use href={`#pl-stack-${l.id}`} />
-            </g>
+      {LETTERS.map((l, i) => (
+        <g key={l.id} transform={`translate(${l.cx} 120)`}>
+          <g>
+            {/* Y-axis flip via scaleX cosine wave — pivots around local (0,0)
+                which is the letter's geometric center. begin="indefinite" so
+                the animation only fires when beginElement() is called from
+                React on each round-start. */}
+            <animateTransform
+              ref={(el) => {
+                flipRefs.current[i] = el;
+              }}
+              attributeName="transform"
+              attributeType="XML"
+              type="scale"
+              values="1 1; 0 1; -1 1; 0 1; 1 1"
+              keyTimes="0; 0.25; 0.5; 0.75; 1"
+              calcMode="spline"
+              keySplines="0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1"
+              dur={`${FLIP_DURATION_S}s`}
+              fill="freeze"
+              begin="indefinite"
+              restart="always"
+            />
+            {/* Glow throb in lockstep with the flip */}
+            <animate
+              ref={(el) => {
+                glowRefs.current[i] = el;
+              }}
+              attributeName="opacity"
+              values="0.85; 1; 0.92; 1; 0.85"
+              keyTimes="0; 0.25; 0.5; 0.75; 1"
+              dur={`${FLIP_DURATION_S}s`}
+              fill="freeze"
+              begin="indefinite"
+              restart="always"
+            />
+            <use href={`#pl-stack-${l.id}`} opacity="0.85" />
           </g>
-        );
-      })}
+        </g>
+      ))}
     </svg>
   );
 };
