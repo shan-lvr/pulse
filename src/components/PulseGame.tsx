@@ -46,6 +46,7 @@ export default function PulseGame() {
   const [history, setHistory] = useState<{ multiplier: number, won: boolean, amount: number }[]>([]);
   const [isMuted, setIsMuted] = useState(false);
   const [vizEnabled, setVizEnabled] = useState(true);
+  const [vizOpacity, setVizOpacity] = useState(0.45);
   // Auto mode: auto-restart the next round after each result.
   const [autoMode, setAutoMode] = useState(true);
   // Optional auto cash-out at AUTO_TARGET_WAVE — independent of autoMode.
@@ -272,7 +273,7 @@ export default function PulseGame() {
       <div className="atmosphere" />
       <MusicVisualizer
         enabled={vizEnabled && !isMuted}
-        opacity={0.45}
+        opacity={vizOpacity}
         blendMode="screen"
         presetWhitelist={PRESET_WHITELIST}
       />
@@ -481,6 +482,24 @@ export default function PulseGame() {
                 FX {vizEnabled ? 'ON' : 'OFF'}
               </button>
             </div>
+            {vizEnabled && (
+              <div className="flex items-center gap-2 mt-1.5 w-full max-w-[220px] justify-end ml-auto">
+                <span className="text-[8px] md:text-[9px] font-bold tracking-[0.15em] text-sky-300/70 uppercase">FX α</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={vizOpacity}
+                  onChange={(e) => setVizOpacity(parseFloat(e.target.value))}
+                  aria-label="Background FX opacity"
+                  className="flex-1 h-1.5 accent-sky-400 cursor-pointer"
+                />
+                <span className="text-[9px] md:text-[10px] font-mono tabular-nums text-sky-300/80 w-7 text-right">
+                  {Math.round(vizOpacity * 100)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

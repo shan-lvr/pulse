@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220" width="800" height="220">
   <defs>
     <!-- PULSE letterforms — chunky 18px stroke block style, baseline y=160, cap-height y=60 -->
-    <path id="p-P" d="M 130 160 L 130 60 L 220 60 L 240 80 L 240 130 L 220 150 L 130 150" />
+    <!-- P: full-height vertical bar + closed loop in the UPPER half only -->
+    <path id="p-P" d="M 130 160 L 130 60 L 215 60 L 215 105 L 130 105" />
     <path id="p-U" d="M 270 60 L 270 145 L 290 160 L 340 160 L 360 145 L 360 60" />
     <path id="p-L" d="M 390 60 L 390 160 L 460 160" />
     <path id="p-S" d="M 570 60 L 490 60 L 490 105 L 570 105 L 570 160 L 490 160" />
