@@ -123,7 +123,19 @@ export const MusicVisualizer = memo(function MusicVisualizer({
           ? presetName
           : pool[Math.floor(Math.random() * pool.length)];
         visualizer.loadPreset(presets[chosen], 0.5);
-        console.log('[MusicViz] Preset:', chosen);
+
+        // Prominent, styled log so the active preset is easy to spot in the console.
+        console.log(
+          '%c[MusicViz] ACTIVE PRESET%c ' + chosen,
+          'background:#0ea5e9;color:#fff;padding:2px 6px;border-radius:3px;font-weight:bold',
+          'color:#f59e0b;font-weight:bold',
+        );
+        // Expose on window for quick inspection: `window.__pulseViz.preset`
+        (window as unknown as { __pulseViz?: unknown }).__pulseViz = {
+          preset: chosen,
+          presetCount: presetNames.length,
+          poolSize: pool.length,
+        };
 
         vizRef.current = visualizer;
 
