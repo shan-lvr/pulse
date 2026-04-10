@@ -78,11 +78,11 @@
         keyTimes="0; 0.125; 0.25; 0.375; 0.5; 1"
         calcMode="spline"
         keySplines="0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.5 0 0.5 1"
-        dur="1.2s" repeatCount="indefinite" begin="0s" />
+        dur="6s" repeatCount="indefinite" begin="0s" />
       <animate attributeName="opacity"
         values="0.85; 1.0; 0.92; 1.0; 1.0; 0.85"
         keyTimes="0; 0.15; 0.35; 0.5; 0.85; 1"
-        dur="1.2s" repeatCount="indefinite" begin="0s" />
+        dur="6s" repeatCount="indefinite" begin="0s" />
       <use href="#L-P" />
     </g>
   </g>
@@ -95,11 +95,11 @@
         keyTimes="0; 0.125; 0.25; 0.375; 0.5; 1"
         calcMode="spline"
         keySplines="0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.5 0 0.5 1"
-        dur="1.2s" repeatCount="indefinite" begin="-0.24s" />
+        dur="6s" repeatCount="indefinite" begin="-1.2s" />
       <animate attributeName="opacity"
         values="0.85; 1.0; 0.92; 1.0; 1.0; 0.85"
         keyTimes="0; 0.15; 0.35; 0.5; 0.85; 1"
-        dur="1.2s" repeatCount="indefinite" begin="-0.24s" />
+        dur="6s" repeatCount="indefinite" begin="-1.2s" />
       <use href="#L-U" />
     </g>
   </g>
@@ -112,11 +112,11 @@
         keyTimes="0; 0.125; 0.25; 0.375; 0.5; 1"
         calcMode="spline"
         keySplines="0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.5 0 0.5 1"
-        dur="1.2s" repeatCount="indefinite" begin="-0.48s" />
+        dur="6s" repeatCount="indefinite" begin="-2.4s" />
       <animate attributeName="opacity"
         values="0.85; 1.0; 0.92; 1.0; 1.0; 0.85"
         keyTimes="0; 0.15; 0.35; 0.5; 0.85; 1"
-        dur="1.2s" repeatCount="indefinite" begin="-0.48s" />
+        dur="6s" repeatCount="indefinite" begin="-2.4s" />
       <use href="#L-L" />
     </g>
   </g>
@@ -129,11 +129,11 @@
         keyTimes="0; 0.125; 0.25; 0.375; 0.5; 1"
         calcMode="spline"
         keySplines="0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.5 0 0.5 1"
-        dur="1.2s" repeatCount="indefinite" begin="-0.72s" />
+        dur="6s" repeatCount="indefinite" begin="-3.6s" />
       <animate attributeName="opacity"
         values="0.85; 1.0; 0.92; 1.0; 1.0; 0.85"
         keyTimes="0; 0.15; 0.35; 0.5; 0.85; 1"
-        dur="1.2s" repeatCount="indefinite" begin="-0.72s" />
+        dur="6s" repeatCount="indefinite" begin="-3.6s" />
       <use href="#L-S" />
     </g>
   </g>
@@ -146,11 +146,11 @@
         keyTimes="0; 0.125; 0.25; 0.375; 0.5; 1"
         calcMode="spline"
         keySplines="0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1; 0.5 0 0.5 1"
-        dur="1.2s" repeatCount="indefinite" begin="-0.96s" />
+        dur="6s" repeatCount="indefinite" begin="-4.8s" />
       <animate attributeName="opacity"
         values="0.85; 1.0; 0.92; 1.0; 1.0; 0.85"
         keyTimes="0; 0.15; 0.35; 0.5; 0.85; 1"
-        dur="1.2s" repeatCount="indefinite" begin="-0.96s" />
+        dur="6s" repeatCount="indefinite" begin="-4.8s" />
       <use href="#L-E" />
     </g>
   </g>

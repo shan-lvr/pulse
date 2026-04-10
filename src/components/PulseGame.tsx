@@ -603,7 +603,11 @@ export default function PulseGame() {
                       : '/results/busted.svg'
                 }
                 alt={gameState === 'WON' ? 'WINNER' : gameState === 'COLLAPSED' ? 'COLLAPSED' : 'BUSTED'}
-                className="w-[80vw] max-w-[640px] h-auto select-none"
+                className={
+                  gameState === 'WON'
+                    ? 'w-[80vw] max-w-[640px] h-auto select-none'
+                    : 'w-[56vw] max-w-[448px] h-auto select-none'
+                }
                 draggable={false}
               />
               {gameState === 'WON' && (
