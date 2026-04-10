@@ -30,12 +30,55 @@ class SoundManager {
   private enabled: boolean = true;
   private bgmRouted = false;
 
+  // ─── Loading progress tracking ────────────────────────────────────
+  private totalSounds = 0;
+  private loadedSounds = 0;
+  private failedSounds = 0;
+  private listeners: ((progress: number) => void)[] = [];
+
   constructor() {
     this.initSounds();
   }
 
+  /** 0..1 — proportion of sounds that have either loaded or failed. */
+  getProgress(): number {
+    if (this.totalSounds === 0) return 1;
+    return (this.loadedSounds + this.failedSounds) / this.totalSounds;
+  }
+
+  /** True once every sound has resolved (loaded or failed). */
+  isReady(): boolean {
+    return this.loadedSounds + this.failedSounds >= this.totalSounds;
+  }
+
+  /**
+   * Subscribe to loading-progress updates. The callback fires once
+   * immediately with the current progress, then again on every change.
+   * Returns an unsubscribe function.
+   */
+  onProgress(cb: (progress: number) => void): () => void {
+    this.listeners.push(cb);
+    cb(this.getProgress());
+    return () => {
+      this.listeners = this.listeners.filter((l) => l !== cb);
+    };
+  }
+
+  private notifyProgress() {
+    const p = this.getProgress();
+    for (const l of this.listeners) {
+      try {
+        l(p);
+      } catch {
+        /* ignore listener errors */
+      }
+    }
+  }
+
   private initSounds() {
-    Object.entries(SOUND_URLS).forEach(([key, url]) => {
+    const entries = Object.entries(SOUND_URLS);
+    this.totalSounds = entries.length;
+    entries.forEach(([key, url]) => {
       const soundKey = key
         .toLowerCase()
         .replace(/_([a-z])/g, (g) => g[1].toUpperCase());
@@ -60,10 +103,14 @@ class SoundManager {
                   : 0.4,
         onload: () => {
           console.log(`Sound loaded: ${soundKey}`);
+          this.loadedSounds++;
           if (isBgm) this.routeBgmThroughWebAudio();
+          this.notifyProgress();
         },
         onloaderror: (_id, error) => {
           console.error(`Error loading sound ${soundKey}:`, error);
+          this.failedSounds++;
+          this.notifyProgress();
         },
         onplayerror: (_id, error) => {
           console.error(`Error playing sound ${soundKey}:`, error);

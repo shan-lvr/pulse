@@ -4,6 +4,7 @@ import { PulseCanvas } from './PulseCanvas';
 import { StarBackground } from './StarBackground';
 import { BurningStar } from './BurningStar';
 import { MusicVisualizer } from './MusicVisualizer';
+import { LoadingOverlay } from './LoadingOverlay';
 import { PRESET_WHITELIST } from '../lib/vfx/preset-whitelist';
 import { 
   GameState, 
@@ -47,6 +48,13 @@ export default function PulseGame() {
   const [isMuted, setIsMuted] = useState(false);
   const [vizEnabled, setVizEnabled] = useState(true);
   const [vizOpacity, setVizOpacity] = useState(0.25);
+  // Loading & user-gesture gating
+  const [loadProgress, setLoadProgress] = useState(() => soundManager.getProgress());
+  const [audioReady, setAudioReady] = useState(() => soundManager.isReady());
+  // Auto mode and BGM playback both require a real user gesture once
+  // (Chrome blocks programmatic <audio>.play() until the user has clicked
+  // somewhere). We flip this on the first PLACE BET click.
+  const [hasInteracted, setHasInteracted] = useState(false);
   // Auto mode: auto-restart the next round after each result.
   const [autoMode, setAutoMode] = useState(true);
   // Optional auto cash-out at AUTO_TARGET_WAVE — independent of autoMode.
@@ -72,6 +80,11 @@ export default function PulseGame() {
       toast.error("Insufficient balance");
       return;
     }
+    if (!audioReady) {
+      // Block kickoff until BGM is at least streamable
+      return;
+    }
+    setHasInteracted(true);
     setBalance(prev => prev - betAmount);
     setGameState('PLAYING');
     setWave(1);
@@ -194,6 +207,14 @@ export default function PulseGame() {
     };
   }, [gameState, wave, collapseWave, betAmount, segments, bonusTotal]);
 
+  // ─── Asset loading subscription ─────────────────────────────────────────
+  useEffect(() => {
+    return soundManager.onProgress((p) => {
+      setLoadProgress(p);
+      if (p >= 1) setAudioReady(true);
+    });
+  }, []);
+
   // ─── Auto mode ──────────────────────────────────────────────────────────
   // Cancel any pending auto timers whenever auto mode flips off or game state
   // changes mid-cycle.
@@ -235,8 +256,11 @@ export default function PulseGame() {
   }, [autoMode, gameState]);
 
   // After IDLE in auto mode, kick off the next bet.
+  // Only fires AFTER the user has manually started the game once — so the
+  // first PLACE BET click satisfies Chrome's autoplay user-gesture rule.
   useEffect(() => {
     if (!autoMode) return;
+    if (!hasInteracted) return;
     if (gameState !== 'IDLE') return;
     if (betAmount > balance) return; // out of money — stop
     clearAutoTimer();
@@ -246,7 +270,7 @@ export default function PulseGame() {
     }, 350);
     return clearAutoTimer;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoMode, gameState, balance, betAmount]);
+  }, [autoMode, hasInteracted, gameState, balance, betAmount]);
 
   // Final cleanup on unmount
   useEffect(() => () => clearAutoTimer(), []);
@@ -331,17 +355,36 @@ export default function PulseGame() {
             Nudged down ~5vh so the ring sits at optical center rather than
             optically biased toward the header. */}
         <div className="relative w-full max-w-[960px] aspect-[3/2] mx-auto flex items-center justify-center translate-y-[5vh]">
-          <PulseCanvas
-            wave={wave}
-            progress={progress}
-            gameState={gameState}
-            rotation={rotation}
-            segments={segments}
-            showSegments={gameState !== 'PLAYING' && gameState !== 'IDLE'}
-            collapseWave={collapseWave}
-          />
-          
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <motion.div
+            className="absolute inset-0 flex items-center justify-center"
+            initial={false}
+            animate={
+              audioReady
+                ? { opacity: 1, scale: 1 }
+                : { opacity: 0, scale: 0.85 }
+            }
+            transition={{ duration: 0.55, ease: [0.2, 0.7, 0.2, 1] }}
+          >
+            <PulseCanvas
+              wave={wave}
+              progress={progress}
+              gameState={gameState}
+              rotation={rotation}
+              segments={segments}
+              showSegments={gameState !== 'PLAYING' && gameState !== 'IDLE'}
+              collapseWave={collapseWave}
+            />
+          </motion.div>
+          {/* Center overlay (BurningStar + multiplier text) — fades in
+              with the canvas once audio is ready. */}
+          <motion.div
+            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
+            initial={false}
+            animate={
+              audioReady ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.85 }
+            }
+            transition={{ duration: 0.55, ease: [0.2, 0.7, 0.2, 1] }}
+          >
             <div className="relative flex flex-col items-center justify-center">
               <div
                 className="absolute z-0"
@@ -349,7 +392,7 @@ export default function PulseGame() {
               >
                 <BurningStar wave={wave} gameState={gameState} />
               </div>
-              <motion.div 
+              <motion.div
                 key={wave}
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -358,7 +401,7 @@ export default function PulseGame() {
                 {(currentMultiplier + bonusTotal).toFixed(1)}x
               </motion.div>
               {bonusTotal > 0 && (
-                <motion.div 
+                <motion.div
                   initial={{ y: 10, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   className="relative z-10 text-sm md:text-xl font-display font-bold text-yellow-500 glow-yellow mt-1 md:mt-2"
@@ -367,7 +410,11 @@ export default function PulseGame() {
                 </motion.div>
               )}
             </div>
-          </div>
+          </motion.div>
+
+          {!audioReady && (
+            <LoadingOverlay progress={loadProgress} ready={audioReady} />
+          )}
         </div>
       </motion.div>
 
@@ -414,12 +461,12 @@ export default function PulseGame() {
                     </CustomButton>
                   ))}
                 </div>
-                <button 
+                <button
                   onClick={startGame}
-                  disabled={betAmount <= 0 || betAmount > balance}
-                  className="bg-sky-600 hover:bg-sky-500 w-full md:w-auto px-10 md:px-20 py-4 md:py-5 rounded-full text-xl md:text-3xl font-display font-black text-white italic tracking-tight shadow-[0_0_30px_rgba(14,165,233,0.3)] transition-all uppercase"
+                  disabled={betAmount <= 0 || betAmount > balance || !audioReady}
+                  className="bg-sky-600 hover:bg-sky-500 w-full md:w-auto px-10 md:px-20 py-4 md:py-5 rounded-full text-xl md:text-3xl font-display font-black text-white italic tracking-tight shadow-[0_0_30px_rgba(14,165,233,0.3)] transition-all uppercase disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-sky-600"
                 >
-                  PLACE BET
+                  {audioReady ? 'PLACE BET' : 'LOADING…'}
                 </button>
               </div>
             )}
