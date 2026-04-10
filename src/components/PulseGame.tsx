@@ -46,7 +46,7 @@ export default function PulseGame() {
   const [history, setHistory] = useState<{ multiplier: number, won: boolean, amount: number }[]>([]);
   const [isMuted, setIsMuted] = useState(false);
   const [vizEnabled, setVizEnabled] = useState(true);
-  const [vizOpacity, setVizOpacity] = useState(0.45);
+  const [vizOpacity, setVizOpacity] = useState(0.25);
   // Auto mode: auto-restart the next round after each result.
   const [autoMode, setAutoMode] = useState(true);
   // Optional auto cash-out at AUTO_TARGET_WAVE — independent of autoMode.
