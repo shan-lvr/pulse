@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Local test artifacts
+.playwright-mcp/
+pulse-site-cloudfront.png
