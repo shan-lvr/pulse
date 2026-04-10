@@ -6,6 +6,7 @@ import { BurningStar } from './BurningStar';
 import { MusicVisualizer } from './MusicVisualizer';
 import { LoadingOverlay } from './LoadingOverlay';
 import { PulseLogo } from './PulseLogo';
+import { WinnerBanner, BustedBanner, CollapsedBanner } from './ResultBanner';
 import { PRESET_WHITELIST } from '../lib/vfx/preset-whitelist';
 import { 
   GameState, 
@@ -595,24 +596,14 @@ export default function PulseGame() {
             exit={{ opacity: 0 }}
             className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px] pointer-events-none"
           >
-            <div className="flex flex-col items-center gap-2 md:gap-4">
-              <img
-                key={gameState}
-                src={
-                  gameState === 'WON'
-                    ? '/results/winner.svg'
-                    : gameState === 'COLLAPSED'
-                      ? '/results/collapsed.svg'
-                      : '/results/busted.svg'
-                }
-                alt={gameState === 'WON' ? 'WINNER' : gameState === 'COLLAPSED' ? 'COLLAPSED' : 'BUSTED'}
-                className={
-                  gameState === 'WON'
-                    ? 'w-[80vw] max-w-[640px] h-auto select-none'
-                    : 'w-[56vw] max-w-[448px] h-auto select-none'
-                }
-                draggable={false}
-              />
+            <div className="flex flex-col items-center gap-2 md:gap-4" key={gameState}>
+              {gameState === 'WON' ? (
+                <WinnerBanner className="w-[80vw] max-w-[720px] h-auto select-none" />
+              ) : gameState === 'COLLAPSED' ? (
+                <CollapsedBanner className="w-[56vw] max-w-[504px] h-auto select-none" />
+              ) : (
+                <BustedBanner className="w-[56vw] max-w-[504px] h-auto select-none" />
+              )}
               {gameState === 'WON' && (
                 <div className="text-xl md:text-3xl font-display font-black text-white glow-blue">
                   +${(betAmount * (currentMultiplier + bonusTotal)).toFixed(2)}
