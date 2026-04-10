@@ -12,3 +12,5 @@ coverage/
 pulse-site-cloudfront.png
 pulse-viz-*.png
 pulse-audio-*.png
+pulse-iter-*.png
+pulse-cf-*.png

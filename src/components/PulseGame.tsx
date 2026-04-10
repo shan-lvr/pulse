@@ -45,12 +45,16 @@ export default function PulseGame() {
   const [bonusTotal, setBonusTotal] = useState(0);
   const [history, setHistory] = useState<{ multiplier: number, won: boolean, amount: number }[]>([]);
   const [isMuted, setIsMuted] = useState(false);
+  const [vizEnabled, setVizEnabled] = useState(true);
 
   const gameLoopRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const lastBonusSegmentId = useRef<number | null>(null);
   const lastPlayedWaveRef = useRef<number>(0);
   const lastPulseTimeRef = useRef<number>(0);
+  // Live rotation mirror so cashOut() always uses the latest value, not the
+  // potentially one-frame-stale React state.
+  const rotationRef = useRef<number>(0);
   const waveDuration = 2000; // 2 seconds per wave
   const rotationSpeed = 180; // Degrees per second
 
@@ -67,6 +71,7 @@ export default function PulseGame() {
     soundManager.play('waveStart'); // Play sound for the first wave
     setProgress(0);
     setRotation(0);
+    rotationRef.current = 0;
     setBonusTotal(0);
     lastBonusSegmentId.current = null;
     setSegments(generateSegments(1));
@@ -78,7 +83,10 @@ export default function PulseGame() {
   const cashOut = () => {
     if (gameState !== 'PLAYING') return;
 
-    const normalizedRotation = ((rotation % 360) + 360) % 360;
+    // Use the live ref so the landing segment matches whatever the canvas
+    // was showing at the instant the user clicked CASH OUT.
+    const liveRotation = rotationRef.current;
+    const normalizedRotation = ((liveRotation % 360) + 360) % 360;
     const segmentIndex = Math.floor(normalizedRotation / (360 / SEGMENT_COUNT));
     const isSafe = segments[segmentIndex].isSafe;
     const baseMultiplier = getMultiplier(wave);
@@ -163,6 +171,7 @@ export default function PulseGame() {
         }
         setProgress(currentProgress);
         setRotation(currentRotation);
+        rotationRef.current = currentRotation;
         gameLoopRef.current = requestAnimationFrame(update);
       };
 
@@ -197,7 +206,7 @@ export default function PulseGame() {
       <StarBackground gameState={gameState} />
       <div className="atmosphere" />
       <MusicVisualizer
-        enabled={!isMuted}
+        enabled={vizEnabled && !isMuted}
         opacity={0.45}
         blendMode="screen"
         presetWhitelist={PRESET_WHITELIST}
@@ -235,7 +244,7 @@ export default function PulseGame() {
       </div>
 
       {/* Main Game Area */}
-      <motion.div 
+      <motion.div
         animate={gameState === 'PLAYING' ? {
           x: [0, -1 * intensity * 2, 1 * intensity * 2, -0.5 * intensity * 2, 0.5 * intensity * 2, 0],
           y: [0, 1 * intensity * 2, -1 * intensity * 2, 0.5 * intensity * 2, -0.5 * intensity * 2, 0],
@@ -245,22 +254,26 @@ export default function PulseGame() {
           repeat: Infinity,
           ease: "linear"
         }}
-        className="flex-1 w-full max-w-6xl flex items-center justify-center relative"
+        className="flex-1 w-full flex items-center justify-center relative"
       >
-        {/* Center Canvas */}
-        <div className="relative flex-1 flex items-center justify-center scale-75 md:scale-100">
-          <PulseCanvas 
-            wave={wave} 
-            progress={progress} 
-            gameState={gameState} 
-            rotation={rotation} 
+        {/* Center Canvas — true page-center alignment */}
+        <div className="relative w-full max-w-[640px] aspect-square mx-auto flex items-center justify-center">
+          <PulseCanvas
+            wave={wave}
+            progress={progress}
+            gameState={gameState}
+            rotation={rotation}
             segments={segments}
             showSegments={gameState !== 'PLAYING' && gameState !== 'IDLE'}
+            collapseWave={collapseWave}
           />
           
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <div className="relative flex flex-col items-center justify-center">
-              <div className="absolute z-0">
+              <div
+                className="absolute z-0"
+                style={{ opacity: gameState === 'PLAYING' ? 0 : 1, transition: 'opacity 0.4s' }}
+              >
                 <BurningStar wave={wave} gameState={gameState} />
               </div>
               <motion.div 
@@ -391,6 +404,16 @@ export default function PulseGame() {
           </div>
         </div>
       </div>
+
+      {/* Background visualizer toggle (bottom-right, fixed) */}
+      <button
+        onClick={() => setVizEnabled(v => !v)}
+        aria-label={vizEnabled ? 'Disable background visualizer' : 'Enable background visualizer'}
+        title={vizEnabled ? 'Disable background FX' : 'Enable background FX'}
+        className="fixed bottom-3 right-3 z-[60] text-[9px] md:text-[10px] font-bold tracking-[0.15em] uppercase px-2.5 py-1.5 rounded-md border border-white/15 bg-black/50 backdrop-blur-md text-white/70 hover:text-white hover:bg-black/70 transition-colors"
+      >
+        FX {vizEnabled ? 'ON' : 'OFF'}
+      </button>
 
       {/* Result Overlay */}
       <AnimatePresence>

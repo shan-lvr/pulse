@@ -1,30 +1,103 @@
 import React, { useEffect, useRef } from 'react';
-import { SEGMENT_COUNT, Segment, Meteor } from '../lib/game-logic';
+import { SEGMENT_COUNT, Segment, GameState } from '../lib/game-logic';
 
 interface PulseCanvasProps {
   wave: number;
   progress: number;
-  gameState: string;
+  gameState: GameState;
+  /** Continuous rotation in degrees (0 starts at the top, grows clockwise) */
   rotation: number;
   segments: Segment[];
+  /** When true, segments reveal their safe/dead/void state */
   showSegments: boolean;
-  meteors: Meteor[];
+  /** Wave index at which the ring will collapse — drives the outer danger arc */
+  collapseWave: number;
 }
 
-export const PulseCanvas: React.FC<PulseCanvasProps> = ({ wave, progress, gameState, rotation, segments = [], showSegments, meteors = [] }) => {
+/**
+ * AAA-quality Pulse roulette canvas.
+ *
+ * Architecture (outer → inner):
+ *   1. Drifting background particles (red / cyan)
+ *   2. Outer dual tick arcs:
+ *        - Right side (cyan) : current wave progress
+ *        - Left  side (red)  : danger accumulation (wave / collapseWave)
+ *   3. Outer rim glow ring (solid thin circle)
+ *   4. Segment band (16 rounded-rect segments)
+ *        - Hidden   : dark slate with cyan outline
+ *        - Scanner  : bright cyan fill (the segment the pointer is currently over)
+ *        - Bonus    : amber outlined with "+x.xx" label
+ *        - Revealed : green (safe) / red (dead)
+ *        - Destroyed: black with red cracks
+ *   5. Inner rim glow ring
+ *   6. Center energy burst (PLAYING only):
+ *        - 32 radial rays with time-based shimmer
+ *        - Horizontal lens flare bar
+ *        - Bright core with multi-stop radial gradient
+ *        - Expanding pulse wave synced to `progress`
+ *
+ * The animation loop is owned by the canvas (independent of React re-renders)
+ * and reads the latest props through a ref, so per-frame shimmer/ray motion
+ * stays smooth even when props change only once per wave tick.
+ */
+export const PulseCanvas: React.FC<PulseCanvasProps> = ({
+  wave,
+  progress,
+  gameState,
+  rotation,
+  segments = [],
+  showSegments,
+  collapseWave,
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const particlesRef = useRef<{ x: number, y: number, size: number, speed: number, angle: number, color: string }[]>([]);
+
+  // Keep the latest props accessible inside the animation loop without
+  // restarting the RAF on every render.
+  const propsRef = useRef({
+    wave,
+    progress,
+    gameState,
+    rotation,
+    segments,
+    showSegments,
+    collapseWave,
+  });
+  propsRef.current = {
+    wave,
+    progress,
+    gameState,
+    rotation,
+    segments,
+    showSegments,
+    collapseWave,
+  };
+
+  const particlesRef = useRef<
+    {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      size: number;
+      color: string;
+      twinkle: number;
+    }[]
+  >([]);
 
   useEffect(() => {
     if (particlesRef.current.length === 0) {
-      particlesRef.current = Array.from({ length: 100 }, () => ({
-        x: Math.random() * 800,
-        y: Math.random() * 800,
-        size: Math.random() * 2 + 1,
-        speed: Math.random() * 0.5 + 0.2,
-        angle: Math.random() * Math.PI * 2,
-        color: Math.random() > 0.5 ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'
-      }));
+      particlesRef.current = Array.from({ length: 90 }, () => {
+        const isRed = Math.random() > 0.55;
+        return {
+          x: Math.random() * 800,
+          y: Math.random() * 800,
+          vx: (Math.random() - 0.5) * 0.3,
+          vy: (Math.random() - 0.5) * 0.3,
+          size: Math.random() * 1.6 + 0.4,
+          color: isRed ? '#ef4444' : '#22d3ee',
+          twinkle: Math.random() * Math.PI * 2,
+        };
+      });
     }
   }, []);
 
@@ -34,231 +107,507 @@ export const PulseCanvas: React.FC<PulseCanvasProps> = ({ wave, progress, gameSt
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const render = () => {
-      const { width, height } = canvas;
-      ctx.clearRect(0, 0, width, height);
+    // HiDPI scaling
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const logicalSize = 800;
+    canvas.width = logicalSize * dpr;
+    canvas.height = logicalSize * dpr;
+    ctx.scale(dpr, dpr);
 
-      const centerX = width / 2;
-      const centerY = height / 2;
-      const maxRadius = Math.min(width, height) * 0.35;
+    let rafId = 0;
 
-      // Draw background particles
-      particlesRef.current.forEach(p => {
-        p.x += Math.cos(p.angle) * p.speed;
-        p.y += Math.sin(p.angle) * p.speed;
-        if (p.x < 0) p.x = width;
-        if (p.x > width) p.x = 0;
-        if (p.y < 0) p.y = height;
-        if (p.y > height) p.y = 0;
-
+    const drawBackgroundParticles = (now: number) => {
+      const particles = particlesRef.current;
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.twinkle += 0.04;
+        if (p.x < -5) p.x = logicalSize + 5;
+        if (p.x > logicalSize + 5) p.x = -5;
+        if (p.y < -5) p.y = logicalSize + 5;
+        if (p.y > logicalSize + 5) p.y = -5;
+        const flicker = 0.5 + 0.5 * Math.sin(p.twinkle);
+        ctx.globalAlpha = 0.25 + 0.45 * flicker;
         ctx.fillStyle = p.color;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
-      });
+      }
+      ctx.globalAlpha = 1;
+    };
 
-      // Draw the ring segments
+    /** Draw a radial tick arc (used for the outer cyan/red progress arcs). */
+    const drawTickArc = (
+      cx: number,
+      cy: number,
+      innerR: number,
+      outerR: number,
+      startAngle: number,
+      endAngle: number,
+      color: string,
+      glow: string,
+      progressFrac: number, // 0..1 — how much of the arc is lit
+      tickCount: number,
+    ) => {
+      const sweep = endAngle - startAngle;
+      const lit = Math.max(0, Math.min(1, progressFrac));
+      const litTicks = Math.round(tickCount * lit);
+
       ctx.save();
-      ctx.translate(centerX, centerY);
-      
-      for (let i = 0; i < SEGMENT_COUNT; i++) {
-        const startAngle = (i * 2 * Math.PI) / SEGMENT_COUNT - Math.PI / 2;
-        const endAngle = ((i + 1) * 2 * Math.PI) / SEGMENT_COUNT - Math.PI / 2;
-        const padding = 0.05; // Small gap between segments
-        
-        const isSafe = segments[i]?.isSafe;
-        const isDestroyed = segments[i]?.isDestroyed;
-        const isRevealed = showSegments;
-        const bonus = segments[i]?.bonusMultiplier;
+      ctx.translate(cx, cy);
 
-        const innerRadius = Math.max(0, maxRadius - 40);
+      for (let i = 0; i < tickCount; i++) {
+        const t = (i + 0.5) / tickCount;
+        const angle = startAngle + sweep * t;
+        const isLit = i < litTicks;
+        if (!isLit) continue;
+        const x1 = Math.cos(angle) * innerR;
+        const y1 = Math.sin(angle) * innerR;
+        const x2 = Math.cos(angle) * outerR;
+        const y2 = Math.sin(angle) * outerR;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.4;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = glow;
         ctx.beginPath();
-        ctx.arc(0, 0, maxRadius, startAngle + padding, endAngle - padding);
-        ctx.arc(0, 0, innerRadius, endAngle - padding, startAngle + padding, true);
-        ctx.closePath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    };
+
+    /** Rounded rect segment in polar coordinates — approximated with canvas arcs. */
+    const drawSegmentBlock = (
+      startA: number,
+      endA: number,
+      innerR: number,
+      outerR: number,
+    ) => {
+      const pad = 0.035; // wider gap between segments → more "block" feel
+      ctx.beginPath();
+      ctx.arc(0, 0, outerR, startA + pad, endA - pad);
+      ctx.arc(0, 0, innerR, endA - pad, startA + pad, true);
+      ctx.closePath();
+    };
+
+    const render = (now: number) => {
+      const {
+        wave: pWave,
+        progress: pProgress,
+        gameState: pState,
+        rotation: pRotation,
+        segments: pSegments,
+        showSegments: pShow,
+        collapseWave: pCollapse,
+      } = propsRef.current;
+
+      ctx.clearRect(0, 0, logicalSize, logicalSize);
+
+      const cx = logicalSize / 2;
+      const cy = logicalSize / 2;
+      const outerRingR = 310;
+      const innerRingR = 232;
+      const segOuter = 298;
+      const segInner = 244;
+      const bandGapOuter = 272; // split within the segment band for inner detail
+
+      // --- 1. background particles ---
+      drawBackgroundParticles(now);
+
+      // --- 2. outer dual tick arcs ---
+      // Right (cyan): current wave progress  – sweeps 0 → 1 inside the wave
+      // Left (red)  : danger accumulation     – wave / collapseWave
+      const waveProgress = Math.max(
+        0,
+        Math.min(1, pState === 'PLAYING' ? pProgress : 0),
+      );
+      const danger =
+        pState === 'PLAYING' && pCollapse > 0
+          ? Math.max(0, Math.min(1, (pWave - 1 + pProgress) / pCollapse))
+          : 0;
+
+      // Right cyan arc: from top (-π/2) clockwise down to bottom-right
+      drawTickArc(
+        cx,
+        cy,
+        segOuter + 18,
+        segOuter + 62,
+        -Math.PI / 2 + 0.12,
+        Math.PI * 0.55,
+        '#22d3ee',
+        '#22d3ee',
+        waveProgress,
+        56,
+      );
+      // Left red arc: from top counter-clockwise to bottom-left
+      drawTickArc(
+        cx,
+        cy,
+        segOuter + 18,
+        segOuter + 62,
+        -Math.PI / 2 - 0.12,
+        -Math.PI * 1.55,
+        '#ef4444',
+        '#ef4444',
+        danger,
+        56,
+      );
+
+      // --- 3. outer rim glow ring ---
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.strokeStyle = 'rgba(125, 211, 252, 0.75)';
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(0, 0, outerRingR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+
+      // --- 4. segment band ---
+      // Which segment is the scanner pointer currently over?
+      const normRot = ((pRotation % 360) + 360) % 360;
+      const liveIdx = Math.floor(normRot / (360 / SEGMENT_COUNT));
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      for (let i = 0; i < SEGMENT_COUNT; i++) {
+        const startA = (i * 2 * Math.PI) / SEGMENT_COUNT - Math.PI / 2;
+        const endA = ((i + 1) * 2 * Math.PI) / SEGMENT_COUNT - Math.PI / 2;
+        const seg = pSegments[i];
+        const isBonus = !!seg?.bonusMultiplier;
+        const isDestroyed = !!seg?.isDestroyed;
+        const isScanner = pState === 'PLAYING' && i === liveIdx;
+
+        drawSegmentBlock(startA, endA, segInner, segOuter);
 
         if (isDestroyed) {
-          ctx.fillStyle = 'rgba(30, 30, 30, 0.9)';
-          ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
-          ctx.lineWidth = 1;
+          ctx.fillStyle = 'rgba(15, 15, 20, 0.92)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.55)';
+          ctx.lineWidth = 1.2;
           ctx.stroke();
-          
-          // Draw cracks
+          // cracks
           ctx.save();
           ctx.clip();
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.35)';
+          ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.strokeStyle = 'rgba(239, 68, 68, 0.3)';
-          for(let j=0; j<5; j++) {
-            ctx.moveTo((Math.random()-0.5)*80, (Math.random()-0.5)*80);
-            ctx.lineTo((Math.random()-0.5)*80, (Math.random()-0.5)*80);
+          const midA = (startA + endA) / 2;
+          for (let k = 0; k < 4; k++) {
+            const r1 = segInner + Math.random() * (segOuter - segInner);
+            const r2 = segInner + Math.random() * (segOuter - segInner);
+            const a1 = midA + (Math.random() - 0.5) * 0.25;
+            const a2 = midA + (Math.random() - 0.5) * 0.25;
+            ctx.moveTo(Math.cos(a1) * r1, Math.sin(a1) * r1);
+            ctx.lineTo(Math.cos(a2) * r2, Math.sin(a2) * r2);
           }
           ctx.stroke();
           ctx.restore();
-        } else if (isRevealed) {
-          ctx.fillStyle = isSafe ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)';
-          ctx.shadowBlur = 15;
+        } else if (pShow) {
+          // revealed
+          const isSafe = !!seg?.isSafe;
+          const gradient = ctx.createRadialGradient(0, 0, segInner, 0, 0, segOuter);
+          if (isSafe) {
+            gradient.addColorStop(0, 'rgba(34, 197, 94, 0.55)');
+            gradient.addColorStop(1, 'rgba(34, 197, 94, 0.95)');
+          } else {
+            gradient.addColorStop(0, 'rgba(239, 68, 68, 0.55)');
+            gradient.addColorStop(1, 'rgba(239, 68, 68, 0.95)');
+          }
+          ctx.fillStyle = gradient;
+          ctx.shadowBlur = 22;
           ctx.shadowColor = isSafe ? '#22c55e' : '#ef4444';
-        } else if (bonus) {
-          // Bonus segment is always visible but distinct
-          ctx.fillStyle = 'rgba(234, 179, 8, 0.3)';
-          ctx.strokeStyle = 'rgba(234, 179, 8, 0.8)';
-          ctx.lineWidth = 3;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = isSafe
+            ? 'rgba(134, 239, 172, 0.9)'
+            : 'rgba(252, 165, 165, 0.9)';
+          ctx.lineWidth = 1.5;
           ctx.stroke();
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = '#eab308';
-        } else {
-          ctx.fillStyle = 'rgba(14, 165, 233, 0.1)';
-          ctx.strokeStyle = 'rgba(14, 165, 233, 0.3)';
+        } else if (isScanner) {
+          // Scanner-highlighted segment (the one the pointer is over)
+          const scannerGrad = ctx.createRadialGradient(
+            0,
+            0,
+            segInner,
+            0,
+            0,
+            segOuter,
+          );
+          scannerGrad.addColorStop(0, 'rgba(125, 211, 252, 0.55)');
+          scannerGrad.addColorStop(1, 'rgba(34, 211, 238, 0.95)');
+          ctx.fillStyle = scannerGrad;
+          ctx.shadowBlur = 28;
+          ctx.shadowColor = '#22d3ee';
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = 'rgba(224, 252, 255, 1)';
           ctx.lineWidth = 2;
           ctx.stroke();
+        } else if (isBonus) {
+          ctx.fillStyle = 'rgba(234, 179, 8, 0.28)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(253, 224, 71, 0.95)';
+          ctx.lineWidth = 2;
+          ctx.shadowBlur = 14;
+          ctx.shadowColor = '#facc15';
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        } else {
+          // default hidden segment
+          const hideGrad = ctx.createRadialGradient(
+            0,
+            0,
+            segInner,
+            0,
+            0,
+            segOuter,
+          );
+          hideGrad.addColorStop(0, 'rgba(30, 41, 59, 0.85)');
+          hideGrad.addColorStop(1, 'rgba(15, 23, 42, 0.95)');
+          ctx.fillStyle = hideGrad;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
         }
-        ctx.fill();
-        ctx.shadowBlur = 0;
 
-        // Draw labels if revealed or if it's a bonus
+        // inner separator line across the middle of the segment band
+        ctx.beginPath();
+        ctx.arc(0, 0, bandGapOuter, startA + 0.02, endA - 0.02);
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.22)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+
+        // labels
+        const midA = (startA + endA) / 2;
         if (isDestroyed) {
-          const midAngle = startAngle + (endAngle - startAngle) / 2;
-          const textDist = Math.max(0, maxRadius - 20);
           ctx.save();
-          ctx.rotate(midAngle + Math.PI / 2);
-          ctx.fillStyle = 'rgba(239, 68, 68, 0.8)';
-          ctx.font = 'bold 10px Orbitron';
+          ctx.rotate(midA + Math.PI / 2);
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
+          ctx.font = 'bold 11px Orbitron, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('VOID', 0, -textDist);
+          ctx.textBaseline = 'middle';
+          ctx.fillText('VOID', 0, -(segInner + (segOuter - segInner) / 2));
           ctx.restore();
-        } else if (isRevealed) {
-          const midAngle = startAngle + (endAngle - startAngle) / 2;
-          const textDist = Math.max(0, maxRadius - 20);
+        } else if (pShow) {
+          const isSafe = !!seg?.isSafe;
           ctx.save();
-          ctx.rotate(midAngle + Math.PI / 2);
-          ctx.fillStyle = 'white';
-          ctx.font = 'bold 12px Orbitron';
+          ctx.rotate(midA + Math.PI / 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 13px Orbitron, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText(isSafe ? 'SAFE' : 'DEAD', 0, -textDist);
+          ctx.textBaseline = 'middle';
+          ctx.shadowBlur = 6;
+          ctx.shadowColor = isSafe ? '#22c55e' : '#ef4444';
+          ctx.fillText(
+            isSafe ? 'SAFE' : 'DEAD',
+            0,
+            -(segInner + (segOuter - segInner) / 2),
+          );
+          ctx.shadowBlur = 0;
           ctx.restore();
-        } else if (bonus) {
-          const midAngle = startAngle + (endAngle - startAngle) / 2;
-          const textDist = Math.max(0, maxRadius - 20);
+        } else if (isBonus) {
           ctx.save();
-          ctx.rotate(midAngle + Math.PI / 2);
-          ctx.fillStyle = '#eab308';
-          ctx.font = 'bold 10px Orbitron';
+          ctx.rotate(midA + Math.PI / 2);
+          ctx.fillStyle = '#fde047';
+          ctx.font = 'bold 10px Orbitron, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText(`+${bonus.toFixed(1)}x`, 0, -textDist);
+          ctx.textBaseline = 'middle';
+          ctx.shadowBlur = 6;
+          ctx.shadowColor = '#fde047';
+          ctx.fillText(
+            `+${seg?.bonusMultiplier?.toFixed(1)}x`,
+            0,
+            -(segInner + (segOuter - segInner) / 2),
+          );
+          ctx.shadowBlur = 0;
           ctx.restore();
         }
       }
-
-      // Inner and Outer glowing rings
-      ctx.beginPath();
-      ctx.arc(0, 0, maxRadius + 5, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(14, 165, 233, 0.5)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      ctx.beginPath();
-      const innerRingRadius = Math.max(0, maxRadius - 45);
-      ctx.arc(0, 0, innerRingRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(14, 165, 233, 0.5)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
       ctx.restore();
 
-      // Draw meteors
-      meteors.forEach(m => {
-        const targetAngle = (m.targetSegmentId * 2 * Math.PI) / SEGMENT_COUNT - Math.PI / 2 + (Math.PI / SEGMENT_COUNT);
-        const startDist = 600;
-        const targetDist = maxRadius;
-        const currentDist = startDist - (startDist - targetDist) * m.progress;
-        
-        const x = centerX + Math.cos(targetAngle) * currentDist;
-        const y = centerY + Math.sin(targetAngle) * currentDist;
+      // --- 5. inner rim glow ring ---
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.strokeStyle = 'rgba(125, 211, 252, 0.75)';
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 14;
+      ctx.shadowColor = '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(0, 0, innerRingR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
 
-        // Draw trail
-        const trailGradient = ctx.createRadialGradient(x, y, 0, x, y, m.size * 2);
-        trailGradient.addColorStop(0, 'rgba(239, 68, 68, 0.8)');
-        trailGradient.addColorStop(1, 'transparent');
-        ctx.fillStyle = trailGradient;
-        ctx.beginPath();
-        ctx.arc(x, y, m.size * 2, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Draw core
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(x, y, m.size / 2, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Draw flame tail
+      // --- 6. center energy burst (PLAYING only, time-animated) ---
+      if (pState === 'PLAYING') {
         ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(targetAngle + Math.PI);
-        const tailGradient = ctx.createLinearGradient(0, 0, m.size * 4, 0);
-        tailGradient.addColorStop(0, 'rgba(239, 68, 68, 0.8)');
-        tailGradient.addColorStop(1, 'transparent');
-        ctx.fillStyle = tailGradient;
-        ctx.beginPath();
-        ctx.moveTo(0, -m.size/2);
-        ctx.lineTo(m.size * 4, 0);
-        ctx.lineTo(0, m.size/2);
-        ctx.fill();
-        ctx.restore();
-      });
+        ctx.translate(cx, cy);
+        ctx.globalCompositeOperation = 'lighter';
 
-      // Draw the expanding pulse
-      if (gameState === 'PLAYING') {
-        const currentRadius = Math.max(0.001, progress * (maxRadius - 45));
-        
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        
-        const pulseGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, currentRadius);
-        pulseGradient.addColorStop(0, 'transparent');
-        pulseGradient.addColorStop(0.8, 'rgba(249, 115, 22, 0.05)');
-        pulseGradient.addColorStop(1, 'rgba(249, 115, 22, 0.4)');
+        const t = now / 1000;
+        const pulseBeat = 0.5 + 0.5 * Math.sin(t * 3.8); // 0..1
+        const intensity = Math.min(1, 0.55 + pWave * 0.05);
 
-        ctx.fillStyle = pulseGradient;
-        ctx.beginPath();
-        ctx.arc(0, 0, currentRadius, 0, 2 * Math.PI);
-        ctx.fill();
+        // ---- 6a. long radial rays (outer fan, 36 thin rays) ----
+        // Use trapezoid shapes so rays widen at the rim — feels more like
+        // light beams than line strokes.
+        const bigRayCount = 36;
+        for (let i = 0; i < bigRayCount; i++) {
+          const angle = (i / bigRayCount) * Math.PI * 2 + t * 0.18;
+          const lenFactor =
+            0.96 + 0.06 * Math.sin(t * 2.6 + i * 1.7) + 0.04 * pulseBeat;
+          const len = (innerRingR - 6) * lenFactor;
+          const alphaPulse = 0.5 + 0.5 * Math.sin(t * 3.4 + i * 0.55);
+          const alpha = (0.42 + 0.5 * alphaPulse) * intensity;
+          const baseW = 1.5;
+          const tipW = 22 + 10 * pulseBeat;
+          ctx.save();
+          ctx.rotate(angle);
+          const rayGrad = ctx.createLinearGradient(0, 0, len, 0);
+          rayGrad.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+          rayGrad.addColorStop(0.4, `rgba(165, 243, 252, ${alpha * 0.85})`);
+          rayGrad.addColorStop(1, 'rgba(34, 211, 238, 0)');
+          ctx.fillStyle = rayGrad;
+          ctx.beginPath();
+          ctx.moveTo(0, -baseW / 2);
+          ctx.lineTo(len, -tipW / 2);
+          ctx.lineTo(len, tipW / 2);
+          ctx.lineTo(0, baseW / 2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
 
-        ctx.strokeStyle = 'rgba(249, 115, 22, 0.8)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(0, 0, currentRadius, 0, 2 * Math.PI);
-        ctx.stroke();
-        
-        ctx.restore();
-      }
-
-      // Scanner head (if playing)
-      if (gameState === 'PLAYING') {
-        const scanRad = (rotation * Math.PI) / 180 - Math.PI / 2;
-        const scanDist = Math.max(0, maxRadius - 20);
-        const scanX = centerX + Math.cos(scanRad) * scanDist;
-        const scanY = centerY + Math.sin(scanRad) * scanDist;
-
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = 'white';
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        ctx.arc(scanX, scanY, 6, 0, Math.PI * 2);
-        ctx.fill();
+        // ---- 6b. fat short rays (cardinal burst, 8 thick rays) ----
+        const fatRayCount = 8;
+        for (let i = 0; i < fatRayCount; i++) {
+          const angle = (i / fatRayCount) * Math.PI * 2 - t * 0.45;
+          const len = 200 + 35 * pulseBeat;
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.65 * intensity})`;
+          ctx.lineWidth = 6;
+          ctx.lineCap = 'round';
+          ctx.shadowBlur = 36;
+          ctx.shadowColor = '#67e8f9';
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(angle) * len, Math.sin(angle) * len);
+          ctx.stroke();
+        }
         ctx.shadowBlur = 0;
+
+        // ---- 6c. horizontal lens flare bar (stretches beyond canvas) ----
+        // Thin bright core line + wide soft cyan halo (matches reference).
+        const flareWidth = logicalSize * 2.4;
+        const flareCoreH = 1.6 + 1.6 * pulseBeat;
+        const flareWideH = 140 + 60 * pulseBeat;
+
+        // Wide soft cyan halo
+        const wideGrad = ctx.createLinearGradient(
+          -flareWidth / 2,
+          0,
+          flareWidth / 2,
+          0,
+        );
+        wideGrad.addColorStop(0, 'rgba(34, 211, 238, 0)');
+        wideGrad.addColorStop(0.3, 'rgba(34, 211, 238, 0.12)');
+        wideGrad.addColorStop(0.5, 'rgba(165, 243, 252, 0.45)');
+        wideGrad.addColorStop(0.7, 'rgba(34, 211, 238, 0.12)');
+        wideGrad.addColorStop(1, 'rgba(34, 211, 238, 0)');
+        ctx.fillStyle = wideGrad;
+        ctx.fillRect(-flareWidth / 2, -flareWideH / 2, flareWidth, flareWideH);
+
+        // Thin bright core line
+        const coreFlareGrad = ctx.createLinearGradient(
+          -flareWidth / 2,
+          0,
+          flareWidth / 2,
+          0,
+        );
+        coreFlareGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        coreFlareGrad.addColorStop(0.42, 'rgba(255, 255, 255, 0.85)');
+        coreFlareGrad.addColorStop(0.5, 'rgba(255, 255, 255, 1)');
+        coreFlareGrad.addColorStop(0.58, 'rgba(255, 255, 255, 0.85)');
+        coreFlareGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = coreFlareGrad;
+        ctx.fillRect(
+          -flareWidth / 2,
+          -flareCoreH / 2,
+          flareWidth,
+          flareCoreH,
+        );
+
+        // ---- 6d. bright core with multi-stop radial gradient ----
+        const coreR = 170 * (0.92 + 0.18 * pulseBeat);
+        const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, coreR);
+        coreGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        coreGrad.addColorStop(0.05, 'rgba(240, 255, 255, 0.98)');
+        coreGrad.addColorStop(0.18, 'rgba(165, 243, 252, 0.9)');
+        coreGrad.addColorStop(0.35, 'rgba(34, 211, 238, 0.55)');
+        coreGrad.addColorStop(0.6, 'rgba(14, 116, 144, 0.18)');
+        coreGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = coreGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, coreR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // ---- 6e. tiny bright pinpoint at dead center ----
+        const pinGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 20);
+        pinGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        pinGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = pinGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 20, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalCompositeOperation = 'source-over';
+
+        // ---- 6f. expanding pulse wave synced to wave progress ----
+        // Subtle cyan ring (kept on theme; the orange version clashed with the burst)
+        const pulseR = 30 + pProgress * (innerRingR - 30);
+        ctx.strokeStyle = `rgba(165, 243, 252, ${0.25 + 0.25 * pulseBeat})`;
+        ctx.lineWidth = 1.6;
+        ctx.shadowBlur = 14;
+        ctx.shadowColor = '#22d3ee';
+        ctx.beginPath();
+        ctx.arc(0, 0, pulseR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        ctx.restore();
+      } else {
+        // idle / revealed: soft central glow only
+        ctx.save();
+        ctx.translate(cx, cy);
+        const idleGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 140);
+        idleGrad.addColorStop(0, 'rgba(125, 211, 252, 0.18)');
+        idleGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = idleGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, 140, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
       }
+
+      rafId = requestAnimationFrame(render);
     };
 
-    const animationFrameId = requestAnimationFrame(render);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [wave, progress, gameState, rotation, segments, showSegments, meteors]);
+    rafId = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
 
   return (
     <canvas
       ref={canvasRef}
       width={800}
       height={800}
-      className="w-full h-full max-w-[500px] max-h-[500px] mx-auto"
+      className="block w-full h-full max-w-[640px] max-h-[640px] mx-auto"
     />
   );
 };
