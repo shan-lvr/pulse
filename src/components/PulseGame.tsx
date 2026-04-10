@@ -327,8 +327,10 @@ export default function PulseGame() {
         className="flex-1 w-full flex items-center justify-center relative"
       >
         {/* Center Canvas — wider 3:2 box so the horizontal lens flare can
-            extend past the segment ring without being clipped at the edges. */}
-        <div className="relative w-full max-w-[960px] aspect-[3/2] mx-auto flex items-center justify-center">
+            extend past the segment ring without being clipped at the edges.
+            Nudged down ~5vh so the ring sits at optical center rather than
+            optically biased toward the header. */}
+        <div className="relative w-full max-w-[960px] aspect-[3/2] mx-auto flex items-center justify-center translate-y-[5vh]">
           <PulseCanvas
             wave={wave}
             progress={progress}
