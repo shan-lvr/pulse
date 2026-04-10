@@ -107,11 +107,13 @@ export const PulseCanvas: React.FC<PulseCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // HiDPI scaling
+    // HiDPI scaling. Canvas is wider than tall so the horizontal lens flare
+    // can extend past the segment ring without being clipped at the edges.
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const logicalSize = 800;
-    canvas.width = logicalSize * dpr;
-    canvas.height = logicalSize * dpr;
+    const logicalW = 1200;
+    const logicalH = 800;
+    canvas.width = logicalW * dpr;
+    canvas.height = logicalH * dpr;
     ctx.scale(dpr, dpr);
 
     let rafId = 0;
@@ -122,10 +124,10 @@ export const PulseCanvas: React.FC<PulseCanvasProps> = ({
         p.x += p.vx;
         p.y += p.vy;
         p.twinkle += 0.04;
-        if (p.x < -5) p.x = logicalSize + 5;
-        if (p.x > logicalSize + 5) p.x = -5;
-        if (p.y < -5) p.y = logicalSize + 5;
-        if (p.y > logicalSize + 5) p.y = -5;
+        if (p.x < -5) p.x = logicalW + 5;
+        if (p.x > logicalW + 5) p.x = -5;
+        if (p.y < -5) p.y = logicalH + 5;
+        if (p.y > logicalH + 5) p.y = -5;
         const flicker = 0.5 + 0.5 * Math.sin(p.twinkle);
         ctx.globalAlpha = 0.25 + 0.45 * flicker;
         ctx.fillStyle = p.color;
@@ -203,10 +205,10 @@ export const PulseCanvas: React.FC<PulseCanvasProps> = ({
         collapseWave: pCollapse,
       } = propsRef.current;
 
-      ctx.clearRect(0, 0, logicalSize, logicalSize);
+      ctx.clearRect(0, 0, logicalW, logicalH);
 
-      const cx = logicalSize / 2;
-      const cy = logicalSize / 2;
+      const cx = logicalW / 2;
+      const cy = logicalH / 2;
       const outerRingR = 310;
       const innerRingR = 232;
       const segOuter = 298;
@@ -502,9 +504,8 @@ export const PulseCanvas: React.FC<PulseCanvasProps> = ({
         }
         ctx.shadowBlur = 0;
 
-        // ---- 6c. horizontal lens flare bar (stretches beyond canvas) ----
-        // Thin bright core line + wide soft cyan halo (matches reference).
-        const flareWidth = logicalSize * 2.4;
+        // ---- 6c. horizontal lens flare bar (full canvas width, fades to 0 at edges) ----
+        const flareWidth = logicalW; // exactly matches canvas → never clipped
         const flareCoreH = 1.6 + 1.6 * pulseBeat;
         const flareWideH = 140 + 60 * pulseBeat;
 
@@ -605,9 +606,9 @@ export const PulseCanvas: React.FC<PulseCanvasProps> = ({
   return (
     <canvas
       ref={canvasRef}
-      width={800}
+      width={1200}
       height={800}
-      className="block w-full h-full max-w-[640px] max-h-[640px] mx-auto"
+      className="block w-full h-full max-w-[960px] mx-auto"
     />
   );
 };
